@@ -61,7 +61,7 @@ export interface HarRequest {
   endTime: number;
   duration: number;
 
-  /** Headers */
+  /** Headers (lowercased keys) */
   headers: Record<string, string>;
   responseHeaders: Record<string, string>;
 
@@ -92,15 +92,35 @@ export interface HarRequest {
    Rule Engine / Findings
    ========================= */
 
-export type FindingType =
-  | 'failed_request'
-  | 'redirect_loop'
-  | 'missing_header'
-  | 'cors_error'
-  | 'token_expired'
-  | 'token_invalid_scope'
-  | 'token_invalid_audience'
-  | 'other';
+export const FindingTypes = {
+  FAILED_REQUEST: 'failed_request',
+  REDIRECT_LOOP: 'redirect_loop',
+  SLOW_REQUEST: 'slow_request',
+  LARGE_PAYLOAD: 'large_payload',
+  MISSING_HEADER: 'missing_header',
+
+  // CORS
+  CORS_ERROR: 'cors_error',
+  CORS_ISSUE: 'cors_issue',
+  CORS_PREFLIGHT_FAILED: 'cors_preflight_failed',
+
+  // Auth
+  AUTH_REQUEST_FAILED: 'auth_request_failed',
+  AUTH_FORBIDDEN: 'auth_forbidden',
+
+  // Token
+  TOKEN_EXPIRED: 'token_expired',
+  TOKEN_INVALID_SCOPE: 'token_invalid_scope',
+  TOKEN_INVALID_AUDIENCE: 'token_invalid_audience',
+
+  // Timing anomalies (NEW)
+  DNS_SLOW: 'dns_slow',
+  SSL_SLOW: 'ssl_slow',
+
+  OTHER: 'other',
+} as const;
+
+export type FindingType = typeof FindingTypes[keyof typeof FindingTypes];
 
 export interface Finding {
   type: FindingType;

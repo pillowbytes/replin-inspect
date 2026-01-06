@@ -1,8 +1,22 @@
-import { HarRequest, Finding } from '../../types';
+import { Finding, HarRequest } from '../../types';
 
-/**
- * Detect requests with non-2xx statuses.
- */
+/* =========================
+   Thresholds (tunable later)
+   ========================= */
+
+const SLOW_REQUEST_MS = 2000;
+const VERY_SLOW_REQUEST_MS = 5000;
+
+const LARGE_REQUEST_BYTES = 500 * 1024;        // 500 KB
+const LARGE_RESPONSE_BYTES = 1 * 1024 * 1024;  // 1 MB
+
+const HIGH_DNS_MS = 200;
+const HIGH_SSL_MS = 500;
+
+/* =========================
+   Failed Requests
+   ========================= */
+
 export function detectFailedRequests(requests: HarRequest[]): Finding[] {
   return requests
     .filter(req => req.status >= 400)
@@ -15,9 +29,10 @@ export function detectFailedRequests(requests: HarRequest[]): Finding[] {
     }));
 }
 
-/**
- * Detect simple redirect loops (same URL requested repeatedly with 3xx status).
- */
+/* =========================
+   Redirect Loops
+   ========================= */
+
 export function detectRedirectLoops(requests: HarRequest[]): Finding[] {
   const loops: Finding[] = [];
   const redirectCounts: Record<string, number> = {};
@@ -40,11 +55,16 @@ export function detectRedirectLoops(requests: HarRequest[]): Finding[] {
   return loops;
 }
 
-/**
- * Detect missing or inconsistent headers (e.g. Authorization).
- */
-export function detectMissingHeaders(requests: HarRequest[], headerName: string): Finding[] {
+/* =========================
+   Missing Headers
+   ========================= */
+
+export function detectMissingHeaders(
+  requests: HarRequest[],
+  headerName: string
+): Finding[] {
   const lower = headerName.toLowerCase();
+
   return requests
     .filter(req => !req.headers[lower])
     .map(req => ({
@@ -54,4 +74,194 @@ export function detectMissingHeaders(requests: HarRequest[], headerName: string)
       relatedRequestId: req.id,
       suggestedAction: `Ensure the ${headerName} header is set on the client.`,
     }));
+}
+
+/* =========================
+   Slow Requests
+   ========================= */
+
+export function detectSlowRequests(requests: HarRequest[]): Finding[] {
+  return requests
+    .filter(req => req.duration >= SLOW_REQUEST_MS)
+    .map(req => ({
+      type: 'slow_request',
+      description: `Request to ${req.url} took ${req.duration} ms to complete`,
+      severity:
+        req.duration >= VERY_SLOW_REQUEST_MS ? 'critical' : 'warning',
+      relatedRequestId: req.id,
+      suggestedAction:
+        'Investigate backend performance, network latency, or blocking dependencies.',
+    }));
+}
+
+/* =========================
+   Large Payloads
+   ========================= */
+
+export function detectLargePayloads(requests: HarRequest[]): Finding[] {
+  const findings: Finding[] = [];
+
+  requests.forEach(req => {
+    const requestSize =
+      req.requestSize ??
+      req.sizes?.requestTotal ??
+      req.requestBody?.size ??
+      0;
+
+    const responseSize =
+      req.responseSize ??
+      req.sizes?.responseTotal ??
+      req.responseBody?.size ??
+      0;
+
+    if (requestSize >= LARGE_REQUEST_BYTES) {
+      findings.push({
+        type: 'large_payload',
+        description: `Large request payload (${Math.round(
+          requestSize / 1024
+        )} KB) sent to ${req.url}`,
+        severity: 'warning',
+        relatedRequestId: req.id,
+        suggestedAction:
+          'Reduce payload size or use pagination / batching.',
+      });
+    }
+
+    if (responseSize >= LARGE_RESPONSE_BYTES) {
+      findings.push({
+        type: 'large_payload',
+        description: `Large response payload (${Math.round(
+          responseSize / 1024
+        )} KB) received from ${req.url}`,
+        severity: 'warning',
+        relatedRequestId: req.id,
+        suggestedAction:
+          'Use pagination, field filtering, or compression.',
+      });
+    }
+  });
+
+  return findings;
+}
+
+/* =========================
+   Auth Request Correlation
+   ========================= */
+
+export function detectAuthRequestFailures(requests: HarRequest[]): Finding[] {
+  return requests
+    .filter(
+      req =>
+        (req.status === 401 || req.status === 403) &&
+        Boolean(req.headers['authorization'])
+    )
+    .map(req => ({
+      type:
+        req.status === 401
+          ? 'auth_request_failed'
+          : 'auth_forbidden',
+      description:
+        req.status === 401
+          ? `Request to ${req.url} was unauthorized despite credentials`
+          : `Request to ${req.url} was forbidden despite credentials`,
+      severity: 'warning',
+      relatedRequestId: req.id,
+      suggestedAction:
+        req.status === 401
+          ? 'Verify token validity, audience, and scope.'
+          : 'Verify user permissions and access control rules.',
+    }));
+}
+
+/* =========================
+   CORS Issues
+   ========================= */
+
+export function detectCorsIssues(requests: HarRequest[]): Finding[] {
+  const findings: Finding[] = [];
+
+  requests.forEach(req => {
+    const isPreflight = req.method === 'OPTIONS';
+    const allowOrigin =
+      req.responseHeaders['access-control-allow-origin'];
+    const allowCredentials =
+      req.responseHeaders['access-control-allow-credentials'];
+
+    if (isPreflight && req.status >= 400) {
+      findings.push({
+        type: 'cors_preflight_failed',
+        description: `CORS preflight request to ${req.url} failed`,
+        severity: 'critical',
+        relatedRequestId: req.id,
+        suggestedAction:
+          'Ensure OPTIONS requests are handled and CORS headers are returned.',
+      });
+      return;
+    }
+
+    if (!isPreflight && req.headers['origin'] && !allowOrigin) {
+      findings.push({
+        type: 'cors_issue',
+        description: `Missing CORS headers on response from ${req.url}`,
+        severity: 'warning',
+        relatedRequestId: req.id,
+        suggestedAction:
+          'Add Access-Control-Allow-Origin on the server.',
+      });
+    }
+
+    if (
+      req.headers['authorization'] &&
+      allowOrigin &&
+      allowOrigin !== '*' &&
+      allowCredentials !== 'true'
+    ) {
+      findings.push({
+        type: 'cors_issue',
+        description: `CORS credentials not allowed for ${req.url}`,
+        severity: 'warning',
+        relatedRequestId: req.id,
+        suggestedAction:
+          'Set Access-Control-Allow-Credentials: true and avoid wildcard origins.',
+      });
+    }
+  });
+
+  return findings;
+}
+
+/* =========================
+   DNS / SSL Timing Anomalies
+   ========================= */
+
+export function detectTimingAnomalies(
+  requests: HarRequest[]
+): Finding[] {
+  const findings: Finding[] = [];
+
+  requests.forEach(req => {
+    if (req.timings?.dns && req.timings.dns > HIGH_DNS_MS) {
+      findings.push({
+        type: 'dns_slow',
+        description: `High DNS resolution time (${req.timings.dns} ms) for ${req.domain}`,
+        severity: 'warning',
+        relatedRequestId: req.id,
+        suggestedAction:
+          'Investigate DNS provider performance or caching.',
+      });
+    }
+
+    if (req.timings?.ssl && req.timings.ssl > HIGH_SSL_MS) {
+      findings.push({
+        type: 'ssl_slow',
+        description: `Slow SSL handshake (${req.timings.ssl} ms) for ${req.domain}`,
+        severity: 'warning',
+        relatedRequestId: req.id,
+        suggestedAction:
+          'Check TLS configuration or certificate chain.',
+      });
+    }
+  });
+
+  return findings;
 }
