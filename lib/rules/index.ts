@@ -1,41 +1,56 @@
-import { HarRequest, TokenInfo, Finding } from '@/types';
+import { Finding, HarRequest, TokenInfo } from '@/types';
 import {
   detectFailedRequests,
   detectRedirectLoops,
   detectMissingHeaders,
-  // add other network rule imports here
+  detectSlowRequests,
+  detectLargePayloads,
+  detectAuthRequestFailures,
+  detectCorsIssues,
+  detectTimingAnomalies,
 } from './networkRules';
-import {
-  detectTokenExpiry,
-  // add other token rule imports here
-} from './tokenRules';
+import { detectTokenIssues } from './tokenRules';
 
-/**
- * Run all defined rule functions against the HAR requests and token info.
- *
- * @param requests An array of parsed HAR entries.
- * @param token    Decoded token information (may be null if no token provided).
- * @param headerToCheck Which request header to consider "required" (e.g. Authorization).
- * @returns A flattened array of all findings.
- */
+export interface RuleContext {
+  requiredAuthHeader?: string;
+}
+
 export function runAllRules(
   requests: HarRequest[],
   token: TokenInfo | null,
-  headerToCheck: string = 'Authorization'
+  context: RuleContext = { requiredAuthHeader: 'Authorization' }
 ): Finding[] {
-  const findings: Finding[] = [];
+  const requiredHeader = context.requiredAuthHeader ?? 'Authorization';
 
-  // Network-related detections
-  findings.push(...detectFailedRequests(requests));
-  findings.push(...detectRedirectLoops(requests));
-  findings.push(...detectMissingHeaders(requests, headerToCheck));
-  // TODO: call other network rule functions here as you implement them
+  const findings: Finding[] = [
+    ...detectFailedRequests(requests),
+    ...detectRedirectLoops(requests),
+    ...detectMissingHeaders(requests, requiredHeader),
+    ...detectSlowRequests(requests),
+    ...detectLargePayloads(requests),
+    ...detectAuthRequestFailures(requests),
+    ...detectCorsIssues(requests),
+    ...detectTimingAnomalies(requests),
+  ];
 
-  // Token-related detections
   if (token) {
-    findings.push(...detectTokenExpiry(token));
-    // TODO: call other token rule functions here as you implement them
+    findings.push(...detectTokenIssues(token));
   }
 
-  return findings;
+  return dedupeFindings(findings);
+}
+
+/* =========================
+   Deduplication
+   ========================= */
+
+function dedupeFindings(findings: Finding[]): Finding[] {
+  const seen = new Set<string>();
+
+  return findings.filter(f => {
+    const key = `${f.type}|${f.relatedRequestId ?? 'global'}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

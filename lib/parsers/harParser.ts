@@ -187,6 +187,11 @@ export function parseHar(file: File): Promise<HarRequest[]> {
           }
         );
 
+        console.log('[HAR PARSER OUTPUT]', {
+          count: requests.length,
+          sample: requests[0],
+          requests,
+        });
         resolve(requests);
       } catch (err) {
         reject(err instanceof Error ? err : new Error('Error parsing HAR'));
