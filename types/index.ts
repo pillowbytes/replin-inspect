@@ -1,87 +1,91 @@
-// types/index.ts
-
 /* =========================
    HAR / Network Inspection
    ========================= */
 
-export interface HarRequest {
-  /** Stable unique identifier for the request */
-  id: string;
-
-  /** HTTP method (GET, POST, etc.) */
-  method: string;
-
-  /** Full request URL */
-  url: string;
-
-  /** HTTP status code */
-  status: number;
-
-  /** Status text (if present in HAR) */
-  statusText?: string;
-
-  /** Epoch timestamp (ms) when request started */
-  startTime: number;
-
-  /** Epoch timestamp (ms) when request finished */
-  endTime: number;
-
-  /** Total duration in milliseconds */
-  duration: number;
-
-  /** Request headers (normalized to lowercase keys) */
-  headers: Record<string, string>;
-
-  /** Response headers (normalized to lowercase keys) */
-  responseHeaders: Record<string, string>;
-
-  /** Size of request payload in bytes (if available) */
-  requestSize?: number;
-
-  /** Size of response payload in bytes (if available) */
-  responseSize?: number;
-
-  /** Normalized resource type (xhr, fetch, document, script, image, etc.) */
-  resourceType?: string;
-
-  /** Optional detailed timing breakdown (HAR timings) */
-  timings?: {
-    blocked?: number;
-    dns?: number;
-    connect?: number;
-    ssl?: number;
-    send?: number;
-    wait?: number;
-    receive?: number;
-  };
+export interface HarTimings {
+  blocked?: number;
+  dns?: number;
+  connect?: number;
+  ssl?: number;
+  send?: number;
+  wait?: number;
+  receive?: number;
 }
 
-/* =========================
-   Token Inspection
-   ========================= */
+export interface HarBody {
+  /** Raw body text (may be undefined or base64 encoded) */
+  text?: string;
 
-export interface TokenInfo {
-  /** Raw JWT string */
-  raw: string;
+  /** MIME type (application/json, text/html, etc.) */
+  mimeType?: string;
 
-  /** Decoded JWT header */
-  header: Record<string, unknown>;
+  /** Size in bytes */
+  size?: number;
 
-  /** Decoded JWT payload */
-  payload: {
-    exp?: number;
-    nbf?: number;
-    iss?: string;
-    aud?: string | string[];
-    scope?: string | string[];
-    [key: string]: unknown;
-  };
+  /** Encoding (e.g. "base64") */
+  encoding?: string;
+}
 
-  /** Whether the token could be parsed as a valid JWT */
-  valid: boolean;
+export interface HarSizes {
+  requestHeaders?: number;
+  requestBody?: number;
+  requestTotal?: number;
 
-  /** Whether the token is expired based on `exp` */
-  expired: boolean;
+  responseHeaders?: number;
+  responseBody?: number;
+  responseTotal?: number;
+}
+
+export interface HarRequest {
+  /** Stable unique identifier */
+  id: string;
+
+  /** HTTP method */
+  method: string;
+
+  /** Full URL */
+  url: string;
+
+  /** Parsed URL components */
+  protocol?: string;
+  domain?: string;
+  path?: string;
+  query?: string;
+
+  /** HTTP status */
+  status: number;
+  statusText?: string;
+
+  /** Timing */
+  startTime: number;
+  endTime: number;
+  duration: number;
+
+  /** Headers */
+  headers: Record<string, string>;
+  responseHeaders: Record<string, string>;
+
+  /** Query params */
+  requestQuery?: Record<string, string>;
+
+  /** Bodies */
+  requestBody?: HarBody;
+  responseBody?: HarBody;
+
+  /** Size breakdown */
+  sizes?: HarSizes;
+
+  /** Convenience sizes */
+  requestSize?: number;
+  responseSize?: number;
+
+  /** Metadata */
+  resourceType?: string;
+  serverIp?: string;
+  fromCache?: boolean;
+
+  /** HAR timing breakdown */
+  timings?: HarTimings;
 }
 
 /* =========================
@@ -99,18 +103,45 @@ export type FindingType =
   | 'other';
 
 export interface Finding {
-  /** Machine-readable finding type */
   type: FindingType;
-
-  /** Human-readable description */
   description: string;
-
-  /** Severity level */
   severity: 'info' | 'warning' | 'critical';
-
-  /** Related request ID (if applicable) */
   relatedRequestId?: string;
-
-  /** Actionable suggestion for support / engineers */
   suggestedAction: string;
+}
+
+/* =========================
+   Token / JWT Inspection
+   ========================= */
+
+export interface TokenInfo {
+  /** Raw token */
+  token: string;
+
+  /** Header (decoded) */
+  header: Record<string, any>;
+
+  /** Payload / claims */
+  payload: {
+    iss?: string;
+    sub?: string;
+    aud?: string | string[];
+    exp?: number;
+    iat?: number;
+    nbf?: number;
+    scope?: string;
+    scp?: string | string[];
+    azp?: string;
+    client_id?: string;
+
+    /** Allow arbitrary custom claims */
+    [key: string]: any;
+  };
+
+  /** Expiry helpers */
+  expiresAt?: number;
+  isExpired?: boolean;
+
+  /** Parsing / validation errors */
+  error?: string;
 }

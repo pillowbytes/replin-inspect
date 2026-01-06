@@ -2,14 +2,20 @@
 
 import { Finding, HarRequest } from '@/types';
 import {
-  BarsArrowDownIcon,
-  BarsArrowUpIcon,
-  CheckIcon,
+  ExclamationTriangleIcon,
+  ClockIcon,
   ChevronDownIcon,
+  CheckIcon,
+  BarsArrowUpIcon,
+  BarsArrowDownIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
 } from '@heroicons/react/20/solid';
 import { useEffect, useMemo, useRef, useState } from 'react';
+
+/* ======================
+   Types & Props
+   ====================== */
 
 interface ResultsTableProps {
   requests: HarRequest[];
@@ -21,24 +27,64 @@ interface ResultsTableProps {
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type StatusClass = '2xx' | '3xx' | '4xx' | '5xx';
 
+/* ======================
+   Helpers
+   ====================== */
+
+function formatTime(ms: number) {
+  const d = new Date(ms);
+  return d.toISOString().substring(11, 23); // HH:mm:ss.ms
+}
+
+function ms(value?: number) {
+  return Math.round(value ?? 0);
+}
+
+function statusToClass(status: number): StatusClass {
+  if (status >= 500) return '5xx';
+  if (status >= 400) return '4xx';
+  if (status >= 300) return '3xx';
+  return '2xx';
+}
+
+function statusColor(status: number) {
+  if (status >= 500) return 'text-red-600';
+  if (status >= 400) return 'text-amber-600';
+  if (status >= 300) return 'text-blue-600';
+  return 'text-gray-900';
+}
+
+function durationBarColor(ms: number) {
+  if (ms > 1500) return 'bg-red-500';
+  if (ms > 500) return 'bg-amber-500';
+  return 'bg-emerald-500';
+}
+
+function sizeLabel(bytes?: number) {
+  if (!bytes || bytes <= 0) return '—';
+  if (bytes > 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  return `${Math.round(bytes / 1024)} KB`;
+}
+
+/* ======================
+   Component
+   ====================== */
+
 export default function ResultsTable({
   requests,
   findingsByRequestId = {},
-  selectedRequestId = null,
+  selectedRequestId,
   onSelectRequest,
 }: ResultsTableProps) {
   const [selectedMethods, setSelectedMethods] = useState<Set<HttpMethod>>(new Set());
-  const [selectedStatusClasses, setSelectedStatusClasses] =
-    useState<Set<StatusClass>>(new Set());
-  const [groupByUrl, setGroupByUrl] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [openDropdown, setOpenDropdown] =
-    useState<'method' | 'status' | null>(null);
+  const [selectedStatusClasses, setSelectedStatusClasses] = useState<Set<StatusClass>>(new Set());
   const [urlQuery, setUrlQuery] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [openDropdown, setOpenDropdown] = useState<'method' | 'status' | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
+  /* ---------- Close dropdown on outside click ---------- */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (!dropdownRef.current?.contains(e.target as Node)) {
@@ -55,33 +101,6 @@ export default function ResultsTable({
     return next;
   };
 
-  const statusToClass = (status: number): StatusClass => {
-    if (status >= 500) return '5xx';
-    if (status >= 400) return '4xx';
-    if (status >= 300) return '3xx';
-    return '2xx';
-  };
-
-  const statusColor = (status: number) => {
-    if (status >= 500) return 'text-red-600';
-    if (status >= 400) return 'text-amber-600';
-    if (status >= 300) return 'text-blue-600';
-    return 'text-gray-800';
-  };
-
-  const durationColor = (ms: number) => {
-    if (ms > 1500) return 'text-red-600';
-    if (ms > 500) return 'text-amber-600';
-    return 'text-gray-800';
-  };
-
-  const sizeColor = (bytes?: number) => {
-    if (!bytes) return 'text-gray-400';
-    if (bytes > 1_000_000) return 'text-red-600';
-    if (bytes > 300_000) return 'text-amber-600';
-    return 'text-gray-800';
-  };
-
   const filtered = useMemo(() => {
     return requests
       .filter((r) => {
@@ -93,46 +112,70 @@ export default function ResultsTable({
         const urlOk =
           urlQuery.trim() === '' ||
           r.url.toLowerCase().includes(urlQuery.toLowerCase());
+
         return methodOk && statusOk && urlOk;
       })
       .sort((a, b) => {
-        const delta = a.duration - b.duration;
+        const delta = ms(a.duration) - ms(b.duration);
         return sortDir === 'asc' ? delta : -delta;
       });
-  }, [
-    requests,
-    selectedMethods,
-    selectedStatusClasses,
-    sortDir,
-    urlQuery,
-  ]);
+  }, [requests, selectedMethods, selectedStatusClasses, urlQuery, sortDir]);
 
-  const grouped = useMemo(() => {
-    if (!groupByUrl) return { All: filtered };
+  /* ---------- STEP 2: auto-select first visible request ---------- */
+  useEffect(() => {
+    if (!onSelectRequest) return;
 
-    return filtered.reduce<Record<string, HarRequest[]>>((acc, req) => {
-      acc[req.url] = acc[req.url] || [];
-      acc[req.url].push(req);
-      return acc;
-    }, {});
-  }, [filtered, groupByUrl]);
+    if (!selectedRequestId && filtered.length > 0) {
+      onSelectRequest(filtered[0].id);
+    }
+  }, [filtered, selectedRequestId, onSelectRequest]);
+
+  /* ---------- STEP 2: keyboard navigation ---------- */
+  useEffect(() => {
+    if (!onSelectRequest || filtered.length === 0) return;
+
+      const handler = (e: KeyboardEvent) => {
+        if (!selectedRequestId) return;
+
+        const idx = filtered.findIndex((r) => r.id === selectedRequestId);
+        if (idx === -1) return;
+
+        if (e.key === 'ArrowDown' && idx < filtered.length - 1) {
+          e.preventDefault();
+          onSelectRequest(filtered[idx + 1].id);
+        }
+
+        if (e.key === 'ArrowUp' && idx > 0) {
+          e.preventDefault();
+          onSelectRequest(filtered[idx - 1].id);
+        }
+
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onSelectRequest(null);
+        }
+      };
+
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [filtered, selectedRequestId, onSelectRequest]);
 
   if (!requests.length) return null;
 
   return (
     <div className="space-y-3">
       {/* Controls */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 text-sm" ref={dropdownRef}>
+      <div className="flex items-center justify-between gap-4 text-sm" ref={dropdownRef}>
+        <div className="flex items-center gap-3">
           {/* URL search */}
           <div className="relative">
             <MagnifyingGlassIcon className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
-              type="text"
-              placeholder="Filter URL"
               value={urlQuery}
               onChange={(e) => setUrlQuery(e.target.value)}
-              className="pl-8 pr-2 py-1.5 w-48 border border-gray-200 rounded-md text-sm focus:outline-none"
+              placeholder="Filter URL"
+              className="pl-8 pr-2 py-1.5 w-48 border border-gray-200 rounded-md"
             />
           </div>
 
@@ -179,197 +222,105 @@ export default function ResultsTable({
           </Dropdown>
         </div>
 
-        {/* Group toggle */}
+        {/* Sort */}
         <button
-          onClick={() => setGroupByUrl((v) => !v)}
-          className="flex items-center gap-3 text-sm"
+          onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+          className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
         >
-          <span className="text-gray-600">Group by URL</span>
-          <span
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-              groupByUrl ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                groupByUrl ? 'translate-x-4' : 'translate-x-1'
-              }`}
-            />
-          </span>
+          Duration
+          {sortDir === 'asc' ? (
+            <BarsArrowUpIcon className="h-4 w-4" />
+          ) : (
+            <BarsArrowDownIcon className="h-4 w-4" />
+          )}
         </button>
       </div>
 
-      {/* Filter chips */}
-      {(selectedMethods.size > 0 ||
-        selectedStatusClasses.size > 0 ||
-        urlQuery) && (
-        <div className="flex flex-wrap gap-2 text-xs">
-          {urlQuery && (
-            <FilterChip
-              label={`URL: ${urlQuery}`}
-              onRemove={() => setUrlQuery('')}
-            />
-          )}
-          {[...selectedMethods].map((m) => (
-            <FilterChip
-              key={m}
-              label={`Method: ${m}`}
-              onRemove={() =>
-                setSelectedMethods((s) => toggleSetValue(s, m))
-              }
-            />
-          ))}
-          {[...selectedStatusClasses].map((s) => (
-            <FilterChip
-              key={s}
-              label={`Status: ${s}`}
-              onRemove={() =>
-                setSelectedStatusClasses((c) => toggleSetValue(c, s))
-              }
-            />
-          ))}
+      {/* Column headers */}
+      <div className="grid grid-cols-[120px_1fr_200px] px-3 text-xs text-gray-500 uppercase tracking-wide">
+        <div className="flex items-center gap-1">
+          <ClockIcon className="h-3 w-3" />
+          Time
         </div>
-      )}
+        <div>Request</div>
+        <div className="text-right">Timing</div>
+      </div>
 
-      {/* Table */}
-      <div className="border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
-            <tr>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Method</th>
-              <th className="px-3 py-2">URL</th>
-              <th className="px-3 py-2 text-right">Size</th>
-              <th
-                className="px-3 py-2 text-right cursor-pointer"
-                onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-              >
-                <span className="inline-flex items-center gap-1">
-                  Duration
-                  {sortDir === 'asc' ? (
-                    <BarsArrowUpIcon className="h-4 w-4" />
-                  ) : (
-                    <BarsArrowDownIcon className="h-4 w-4" />
+      {/* Rows */}
+      <div className="border border-gray-200 rounded-xl overflow-hidden divide-y">
+        {filtered.map((req) => {
+          const findings = findingsByRequestId[req.id] ?? [];
+          const selected = selectedRequestId === req.id;
+          const durationMs = ms(req.duration);
+
+          return (
+            <div
+              key={req.id}
+              onClick={() => onSelectRequest?.(req.id)}
+              className={`grid grid-cols-[120px_1fr_200px] items-center px-3 py-3 cursor-pointer hover:bg-gray-50 ${
+                selected ? 'bg-blue-50 ring-1 ring-blue-200' : ''
+              }`}
+            >
+              {/* Time */}
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <ClockIcon className="h-3 w-3 shrink-0" />
+                <span>{formatTime(req.startTime)}</span>
+              </div>
+
+              {/* Request info */}
+              <div className="space-y-1 overflow-hidden">
+                <div className="truncate text-sm font-medium">
+                  <span className="font-mono mr-2">{req.method}</span>
+                  {req.url}
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-gray-600">
+                  <span className={statusColor(req.status)}>
+                    {req.status}
+                  </span>
+                  <span>{req.resourceType ?? 'request'}</span>
+                  <span>
+                    {sizeLabel(req.requestSize)} → {sizeLabel(req.responseSize)}
+                  </span>
+
+                  {findings.length > 0 && (
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <ExclamationTriangleIcon className="h-3 w-3" />
+                      {findings.length}
+                    </span>
                   )}
-                </span>
-              </th>
-              <th className="px-3 py-2 text-center">⚠</th>
-            </tr>
-          </thead>
+                </div>
+              </div>
 
-          <tbody>
-            {Object.entries(grouped).map(([groupKey, group]) => (
-              <FragmentGroup
-                key={groupKey}
-                groupKey={groupKey}
-                group={group}
-                expandedGroups={expandedGroups}
-                setExpandedGroups={setExpandedGroups}
-                selectedRequestId={selectedRequestId}
-                onSelectRequest={onSelectRequest}
-                findingsByRequestId={findingsByRequestId}
-                statusColor={statusColor}
-                durationColor={durationColor}
-                sizeColor={sizeColor}
-              />
-            ))}
+              {/* Timing */}
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${durationBarColor(durationMs)}`}
+                    style={{ width: '60%' }}
+                  />
+                </div>
+                <div className="text-xs text-gray-600 w-14 text-right">
+                  {durationMs} ms
+                </div>
+              </div>
+            </div>
+          );
+        })}
 
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  No requests match the selected filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        {filtered.length === 0 && (
+          <div className="px-4 py-6 text-center text-sm text-gray-500">
+            No requests match the selected filters.
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ---------- Group renderer ---------- */
-
-function FragmentGroup({
-  groupKey,
-  group,
-  expandedGroups,
-  setExpandedGroups,
-  selectedRequestId,
-  onSelectRequest,
-  findingsByRequestId,
-  statusColor,
-  durationColor,
-  sizeColor,
-}: any) {
-  const isGrouped = group.length > 1;
-  const expanded = expandedGroups.has(groupKey);
-
-  const toggle = () => {
-    const next = new Set(expandedGroups);
-    next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey);
-    setExpandedGroups(next);
-  };
-
-  return (
-    <>
-      {isGrouped && (
-        <tr className="bg-gray-50 text-xs text-gray-600">
-          <td colSpan={6} className="px-3 py-2 cursor-pointer" onClick={toggle}>
-            {expanded ? '▼' : '▶'} {groupKey} ({group.length})
-          </td>
-        </tr>
-      )}
-
-      {(expanded || !isGrouped) &&
-        group.map((req: HarRequest) => {
-          const findings = findingsByRequestId[req.id] ?? [];
-          const selected = selectedRequestId === req.id;
-
-          return (
-            <tr
-              key={req.id}
-              onClick={() => onSelectRequest?.(req.id)}
-              className={`border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                selected ? 'bg-blue-50' : ''
-              }`}
-            >
-              <td className={`px-3 py-2 ${statusColor(req.status)}`}>
-                {req.status}
-              </td>
-              <td className="px-3 py-2 font-mono">{req.method}</td>
-              <td className="px-3 py-2 truncate max-w-[420px]">
-                {req.url}
-              </td>
-              <td
-                className={`px-3 py-2 text-right ${sizeColor(
-                  req.responseSize,
-                )}`}
-              >
-                {req.responseSize
-                  ? `${Math.round(req.responseSize / 1024)} KB`
-                  : '—'}
-              </td>
-              <td
-                className={`px-3 py-2 text-right ${durationColor(
-                  req.duration,
-                )}`}
-              >
-                {req.duration} ms
-              </td>
-              <td className="px-3 py-2 text-center">
-                {findings.length > 0 && (
-                  <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-                )}
-              </td>
-            </tr>
-          );
-        })}
-    </>
-  );
-}
-
-/* ---------- Small helpers ---------- */
+/* ======================
+   Small UI helpers
+   ====================== */
 
 function Dropdown({
   label,
@@ -416,7 +367,7 @@ function DropdownOption({
       className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50"
     >
       <span>{children}</span>
-      {active && <CheckIcon className="h-4 w-4 text-gray-700" />}
+      {active && <CheckIcon className="h-4 w-4" />}
     </div>
   );
 }
@@ -431,10 +382,7 @@ function FilterChip({
   return (
     <div className="flex items-center gap-1 px-2 py-1 border border-gray-200 rounded-full bg-gray-50">
       <span>{label}</span>
-      <button
-        onClick={onRemove}
-        className="hover:text-gray-900 text-gray-500"
-      >
+      <button onClick={onRemove} className="text-gray-500 hover:text-gray-900">
         <XMarkIcon className="h-3 w-3" />
       </button>
     </div>
