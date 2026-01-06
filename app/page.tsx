@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import UploadArea from "@/components/UploadArea";
 import TokenInspector from "@/components/TokenInspector";
 import ResultsTable from "@/components/ResultsTable";
+import RequestDetailsPanel from "@/components/RequestDetailsPanel";
 import { runAllRules } from "@/lib/rules";
 import { HarRequest, TokenInfo, Finding } from "@/types";
 
@@ -39,8 +40,8 @@ export default function HomePage() {
     const avgDuration =
       total > 0
         ? Math.round(
-            requests.reduce((sum, r) => sum + (r.duration || 0), 0) / total
-          )
+          requests.reduce((sum, r) => sum + (r.duration || 0), 0) / total
+        )
         : 0;
 
     return { total, failed, avgDuration };
@@ -58,12 +59,14 @@ export default function HomePage() {
 
     return map;
   }, [findings]);
+  
 
   // NEW: findings shown in Insights panel
   const visibleFindings = useMemo(() => {
     if (!selectedRequestId) return findings;
     return findingsByRequestId[selectedRequestId] ?? [];
   }, [findings, findingsByRequestId, selectedRequestId]);
+
 
   const handleParsed = (parsed: HarRequest[]) => {
     setRequests(parsed);
@@ -86,7 +89,7 @@ export default function HomePage() {
     <>
       {/* Header – full width */}
       <header className="w-full border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Square3Stack3DIcon className="h-6 w-6 text-gray-900" />
             <div>
@@ -110,28 +113,26 @@ export default function HomePage() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-6xl mx-auto px-6 pt-8 pb-10 space-y-8">
+      <main className="max-w-7xl mx-auto px-6 pt-8 pb-10 space-y-8">
         {/* Mode selector */}
         <nav>
           <div className="inline-flex rounded-lg bg-gray-100 p-1 text-sm">
             <button
               onClick={() => setMode("network")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
-                mode === "network"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${mode === "network"
                   ? "bg-white border border-gray-200"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
             >
               <GlobeAltIcon className="h-4 w-4" />
               Network
             </button>
             <button
               onClick={() => setMode("token")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${
-                mode === "token"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${mode === "token"
                   ? "bg-white border border-gray-200"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
             >
               <KeyIcon className="h-4 w-4" />
               Token
@@ -181,34 +182,42 @@ export default function HomePage() {
                 />
               </div>
 
-              <aside>
-                <h2 className="text-sm font-semibold mb-3 text-gray-700">
-                  Insights & Findings
-                </h2>
-                <div className="border border-gray-200 rounded-xl p-4 text-sm">
-                  {visibleFindings.length === 0 ? (
-                    <div className="text-gray-500">
-                      {selectedRequestId
-                        ? "No findings for this request."
-                        : "No issues detected."}
+              <aside className="h-full">
+                {selectedRequestId ? (
+                  <RequestDetailsPanel
+                    request={
+                      requests.find((r) => r.id === selectedRequestId)!
+                    }
+                    findings={findingsByRequestId[selectedRequestId]}
+                  />
+                ) : (
+                  <>
+                    <h2 className="text-sm font-semibold mb-3 text-gray-700">
+                      Insights & Findings
+                    </h2>
+                    <div className="border border-gray-200 rounded-xl p-4 text-sm">
+                      {findings.length === 0 ? (
+                        <div className="text-gray-500">No issues detected.</div>
+                      ) : (
+                        findings.map((finding, index) => (
+                          <div
+                            key={index}
+                            className="pb-3 mb-3 border-b border-gray-100 last:mb-0 last:border-b-0"
+                          >
+                            <div className="font-medium text-gray-900">
+                              {finding.description}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {finding.suggestedAction}
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
-                  ) : (
-                    visibleFindings.map((finding, index) => (
-                      <div
-                        key={index}
-                        className="pb-3 mb-3 border-b border-gray-100 last:mb-0 last:border-b-0"
-                      >
-                        <div className="font-medium text-gray-900">
-                          {finding.description}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {finding.suggestedAction}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                  </>
+                )}
               </aside>
+
             </div>
           </>
         )}
