@@ -1,30 +1,29 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import UploadArea from "@/components/UploadArea";
-import TokenInspector from "@/components/TokenInspector";
-import ResultsTable from "@/components/ResultsTable";
-import RequestDetailsPanel from "@/components/RequestDetailsPanel";
-import { runAllRules } from "@/lib/rules";
-import { HarRequest, TokenInfo, Finding } from "@/types";
+import { useMemo, useState } from 'react';
+import UploadArea from '@/components/UploadArea';
+import TokenInspector from '@/components/TokenInspector';
+import ResultsTable from '@/components/ResultsTable';
+import RequestDetailsPanel from '@/components/RequestDetailsPanel';
+import AnalysisTile from '@/components/AnalysisTile';
+import { runAllRules } from '@/lib/rules';
+import { HarRequest, TokenInfo, Finding } from '@/types';
 
 // Heroicons
-import { Square3Stack3DIcon } from "@heroicons/react/24/solid";
+import { Square3Stack3DIcon } from '@heroicons/react/24/solid';
 import {
   GlobeAltIcon,
   KeyIcon,
   FolderPlusIcon,
-} from "@heroicons/react/20/solid";
+} from '@heroicons/react/20/solid';
 
-type AnalysisMode = "network" | "token";
+type AnalysisMode = 'network' | 'token';
 
 export default function HomePage() {
   const [analysisStarted, setAnalysisStarted] = useState(false);
-  const [mode, setMode] = useState<AnalysisMode>("network");
+  const [mode, setMode] = useState<AnalysisMode>('network');
   const [requests, setRequests] = useState<HarRequest[]>([]);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
-
-  // NEW: selected request
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
     null
   );
@@ -34,39 +33,28 @@ export default function HomePage() {
     return runAllRules(requests, tokenInfo);
   }, [analysisStarted, requests, tokenInfo]);
 
+  const findingsByRequestId = useMemo(() => {
+    const map: Record<string, Finding[]> = {};
+    for (const f of findings) {
+      if (!f.relatedRequestId) continue;
+      map[f.relatedRequestId] ??= [];
+      map[f.relatedRequestId].push(f);
+    }
+    return map;
+  }, [findings]);
+
   const metrics = useMemo(() => {
     const total = requests.length;
     const failed = requests.filter((r) => r.status >= 400).length;
     const avgDuration =
       total > 0
         ? Math.round(
-          requests.reduce((sum, r) => sum + (r.duration || 0), 0) / total
-        )
+            requests.reduce((s, r) => s + (r.duration || 0), 0) /
+              total
+          )
         : 0;
-
     return { total, failed, avgDuration };
   }, [requests]);
-
-  const findingsByRequestId = useMemo(() => {
-    const map: Record<string, Finding[]> = {};
-
-    for (const finding of findings) {
-      if (!finding.relatedRequestId) continue;
-
-      map[finding.relatedRequestId] ??= [];
-      map[finding.relatedRequestId].push(finding);
-    }
-
-    return map;
-  }, [findings]);
-  
-
-  // NEW: findings shown in Insights panel
-  const visibleFindings = useMemo(() => {
-    if (!selectedRequestId) return findings;
-    return findingsByRequestId[selectedRequestId] ?? [];
-  }, [findings, findingsByRequestId, selectedRequestId]);
-
 
   const handleParsed = (parsed: HarRequest[]) => {
     setRequests(parsed);
@@ -87,7 +75,6 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Header – full width */}
       <header className="w-full border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -103,7 +90,7 @@ export default function HomePage() {
           {analysisStarted && (
             <button
               onClick={handleNewAnalysis}
-              className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition"
+              className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50"
             >
               <FolderPlusIcon className="h-4 w-4" />
               New analysis
@@ -112,29 +99,29 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="max-w-7xl mx-auto px-6 pt-8 pb-10 space-y-8">
-        {/* Mode selector */}
         <nav>
           <div className="inline-flex rounded-lg bg-gray-100 p-1 text-sm">
             <button
-              onClick={() => setMode("network")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${mode === "network"
-                  ? "bg-white border border-gray-200"
-                  : "text-gray-600 hover:text-gray-900"
-                }`}
+              onClick={() => setMode('network')}
+              className={`px-3 py-1.5 rounded-md ${
+                mode === 'network'
+                  ? 'bg-white border border-gray-200'
+                  : 'text-gray-600'
+              }`}
             >
-              <GlobeAltIcon className="h-4 w-4" />
+              <GlobeAltIcon className="h-4 w-4 inline mr-1" />
               Network
             </button>
             <button
-              onClick={() => setMode("token")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition ${mode === "token"
-                  ? "bg-white border border-gray-200"
-                  : "text-gray-600 hover:text-gray-900"
-                }`}
+              onClick={() => setMode('token')}
+              className={`px-3 py-1.5 rounded-md ${
+                mode === 'token'
+                  ? 'bg-white border border-gray-200'
+                  : 'text-gray-600'
+              }`}
             >
-              <KeyIcon className="h-4 w-4" />
+              <KeyIcon className="h-4 w-4 inline mr-1" />
               Token
             </button>
           </div>
@@ -142,36 +129,28 @@ export default function HomePage() {
 
         {!analysisStarted ? (
           <div className="border border-gray-200 rounded-xl p-6">
-            {mode === "network" && <UploadArea onParsed={handleParsed} />}
-            {mode === "token" && <TokenInspector onDecoded={handleDecoded} />}
+            {mode === 'network' && <UploadArea onParsed={handleParsed} />}
+            {mode === 'token' && <TokenInspector onDecoded={handleDecoded} />}
           </div>
         ) : (
           <>
             {/* Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="border border-gray-200 rounded-xl p-4">
-                <div className="text-sm text-gray-600">Total requests</div>
-                <div className="text-2xl font-semibold mt-1">
-                  {metrics.total}
-                </div>
-              </div>
-
-              <div className="border border-gray-200 rounded-xl p-4">
-                <div className="text-sm text-gray-600">Failed requests</div>
-                <div className="text-2xl font-semibold mt-1">
-                  {metrics.failed}
-                </div>
-              </div>
-
-              <div className="border border-gray-200 rounded-xl p-4">
-                <div className="text-sm text-gray-600">Avg duration</div>
-                <div className="text-2xl font-semibold mt-1">
-                  {metrics.avgDuration} ms
-                </div>
-              </div>
+              <Metric label="Total requests" value={metrics.total} />
+              <Metric label="Failed requests" value={metrics.failed} />
+              <Metric
+                label="Avg duration"
+                value={`${metrics.avgDuration} ms`}
+              />
             </div>
 
-            {/* Results + Insights */}
+            {/* NEW: Analysis tile */}
+            <AnalysisTile
+              findings={findings}
+              onSelectRequest={(id) => setSelectedRequestId(id)}
+            />
+
+            {/* Table + details */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2">
                 <ResultsTable
@@ -182,46 +161,29 @@ export default function HomePage() {
                 />
               </div>
 
-              <aside className="h-full">
-                {selectedRequestId ? (
+              <aside>
+                {selectedRequestId && (
                   <RequestDetailsPanel
                     request={
                       requests.find((r) => r.id === selectedRequestId)!
                     }
                     findings={findingsByRequestId[selectedRequestId]}
                   />
-                ) : (
-                  <>
-                    <h2 className="text-sm font-semibold mb-3 text-gray-700">
-                      Insights & Findings
-                    </h2>
-                    <div className="border border-gray-200 rounded-xl p-4 text-sm">
-                      {findings.length === 0 ? (
-                        <div className="text-gray-500">No issues detected.</div>
-                      ) : (
-                        findings.map((finding, index) => (
-                          <div
-                            key={index}
-                            className="pb-3 mb-3 border-b border-gray-100 last:mb-0 last:border-b-0"
-                          >
-                            <div className="font-medium text-gray-900">
-                              {finding.description}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {finding.suggestedAction}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </>
                 )}
               </aside>
-
             </div>
           </>
         )}
       </main>
     </>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="border border-gray-200 rounded-xl p-4">
+      <div className="text-sm text-gray-600">{label}</div>
+      <div className="text-2xl font-semibold mt-1">{value}</div>
+    </div>
   );
 }
