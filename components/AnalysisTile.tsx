@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 interface AnalysisTileProps {
   findings: Finding[];
   onSelectRequest: (id: string) => void;
+  embedded?: boolean;
 }
 
 /* ======================
@@ -47,6 +48,7 @@ function cleanMessage(description: string, url: string) {
 export default function AnalysisTile({
   findings,
   onSelectRequest,
+  embedded = false,
 }: AnalysisTileProps) {
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({});
   const [expandedUrls, setExpandedUrls] = useState<Record<string, boolean>>({});
@@ -81,7 +83,11 @@ export default function AnalysisTile({
 
   if (findings.length === 0) {
     return (
-      <div className="border border-gray-200 rounded-xl p-4 bg-white flex items-center gap-2">
+      <div
+        className={`${
+          embedded ? 'p-0 bg-transparent border-0' : 'border border-gray-200 rounded-xl p-4 bg-white'
+        } flex items-center gap-2`}
+      >
         <CheckCircleIcon className="h-5 w-5 text-emerald-500" />
         <div className="text-sm text-gray-700">
           No issues detected in this analysis.
@@ -91,7 +97,11 @@ export default function AnalysisTile({
   }
 
   return (
-    <div className="border border-gray-200 rounded-xl p-4 bg-white space-y-4">
+    <div
+      className={`${
+        embedded ? 'p-0 bg-transparent border-0' : 'border border-gray-200 rounded-xl p-4 bg-white'
+      } space-y-4`}
+    >
       {/* Header */}
       <div className="flex items-center gap-2">
         <ExclamationTriangleIcon className="h-5 w-5 text-amber-500" />

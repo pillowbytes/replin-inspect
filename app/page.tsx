@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import UploadArea from '@/components/UploadArea';
 import TokenInspector from '@/components/TokenInspector';
 import ResultsTable from '@/components/ResultsTable';
 import RequestDetailsPanel from '@/components/RequestDetailsPanel';
 import AnalysisTile from '@/components/AnalysisTile';
+import FiltersPanel from '@/components/FiltersPanel';
 import { runAllRules } from '@/lib/rules';
 import { HarRequest, TokenInfo, Finding } from '@/types';
 
@@ -27,6 +28,17 @@ export default function HomePage() {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
     null
   );
+  const [issueFilter, setIssueFilter] = useState<
+    'all' | 'failures' | 'critical' | 'warning'
+  >('all');
+  const [showFindings, setShowFindings] = useState(false);
+  const [selectedMethods, setSelectedMethods] = useState<Set<
+    'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  >>(new Set());
+  const [selectedStatusClasses, setSelectedStatusClasses] = useState<Set<
+    '2xx' | '3xx' | '4xx' | '5xx'
+  >>(new Set());
+  const [urlQuery, setUrlQuery] = useState('');
 
   const findings = useMemo(() => {
     if (!analysisStarted) return [];
@@ -56,6 +68,13 @@ export default function HomePage() {
     return { total, failed, avgDuration };
   }, [requests]);
 
+  const findingsSummary = useMemo(() => {
+    const critical = findings.filter((f) => f.severity === 'critical').length;
+    const warning = findings.filter((f) => f.severity === 'warning').length;
+    const info = findings.filter((f) => f.severity === 'info').length;
+    return { total: findings.length, critical, warning, info };
+  }, [findings]);
+
   const handleParsed = (parsed: HarRequest[]) => {
     setRequests(parsed);
     setAnalysisStarted(true);
@@ -71,12 +90,29 @@ export default function HomePage() {
     setRequests([]);
     setTokenInfo(null);
     setSelectedRequestId(null);
+    setSelectedMethods(new Set());
+    setSelectedStatusClasses(new Set());
+    setUrlQuery('');
+    setIssueFilter('all');
+    setShowFindings(false);
   };
 
+  useEffect(() => {
+    if (analysisStarted) {
+      document.body.classList.add('overflow-hidden', 'h-screen');
+    } else {
+      document.body.classList.remove('overflow-hidden', 'h-screen');
+    }
+  }, [analysisStarted]);
+
   return (
-    <>
+    <div
+      className={`flex flex-col ${
+        analysisStarted ? 'h-screen' : 'min-h-screen'
+      }`}
+    >
       <header className="w-full border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Square3Stack3DIcon className="h-6 w-6 text-gray-900" />
             <div>
@@ -99,7 +135,11 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 pt-8 pb-10 space-y-8">
+      <main
+        className={`flex-1 min-h-0 max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 ${
+          analysisStarted ? 'overflow-hidden flex flex-col gap-6' : 'space-y-8'
+        }`}
+      >
         <nav>
           <div className="inline-flex rounded-lg bg-gray-100 p-1 text-sm">
             <button
@@ -134,58 +174,184 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Metric label="Total requests" value={metrics.total} />
-              <Metric label="Failed requests" value={metrics.failed} />
-              <Metric
-                label="Avg duration"
-                value={`${metrics.avgDuration} ms`}
-              />
-            </div>
-
-            {/* NEW: Analysis tile */}
-            <AnalysisTile
-              findings={findings}
-              onSelectRequest={(id) => setSelectedRequestId(id)}
-            />
-
-            {/* Table + details */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2">
-                <ResultsTable
-                  requests={requests}
-                  findingsByRequestId={findingsByRequestId}
-                  selectedRequestId={selectedRequestId}
-                  onSelectRequest={setSelectedRequestId}
+            {/* Summary strip */}
+            {/* Command center layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_380px] gap-8 flex-1 min-h-0">
+              <aside className="space-y-4 lg:overflow-y-auto lg:pr-2 pb-2">
+                <FiltersPanel
+                  selectedMethods={selectedMethods}
+                  setSelectedMethods={setSelectedMethods}
+                  selectedStatusClasses={selectedStatusClasses}
+                  setSelectedStatusClasses={setSelectedStatusClasses}
+                  urlQuery={urlQuery}
+                  setUrlQuery={setUrlQuery}
                 />
-              </div>
 
-              <aside className="pt-12">
-                <div className="h-[837px]">
-                  {selectedRequestId && (
+                <div className="border border-gray-200 rounded-xl p-4 bg-white">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Findings
+                  </div>
+                  <div className="mt-3 space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Total</span>
+                      <span className="font-medium">{findingsSummary.total}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Critical</span>
+                      <span className="font-medium text-red-600">
+                        {findingsSummary.critical}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Warnings</span>
+                      <span className="font-medium text-amber-600">
+                        {findingsSummary.warning}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Info</span>
+                      <span className="font-medium text-gray-700">
+                        {findingsSummary.info}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowFindings(true)}
+                    disabled={findingsSummary.total === 0}
+                    className="mt-4 w-full text-sm px-3 py-2 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    Open findings
+                  </button>
+                </div>
+              </aside>
+
+              <section className="min-h-0 flex flex-col pb-2">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {showFindings ? 'Findings' : 'Requests'}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    {!showFindings ? (
+                      <>
+                        <SummaryPill
+                          label="All"
+                          value={metrics.total}
+                          active={issueFilter === 'all'}
+                          onClick={() => setIssueFilter('all')}
+                        />
+                        <SummaryPill
+                          label="Failures"
+                          value={metrics.failed}
+                          active={issueFilter === 'failures'}
+                          onClick={() => setIssueFilter('failures')}
+                          tone="danger"
+                        />
+                        <SummaryPill
+                          label="Critical"
+                          value={findingsSummary.critical}
+                          active={issueFilter === 'critical'}
+                          onClick={() => setIssueFilter('critical')}
+                          tone="danger"
+                        />
+                        <SummaryPill
+                          label="Warnings"
+                          value={findingsSummary.warning}
+                          active={issueFilter === 'warning'}
+                          onClick={() => setIssueFilter('warning')}
+                          tone="warning"
+                        />
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setShowFindings(false)}
+                        className="text-xs px-3 py-1.5 border border-gray-200 rounded-md hover:bg-gray-50"
+                      >
+                        Back to requests
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 min-h-0">
+                  {showFindings ? (
+                    <AnalysisTile
+                      findings={findings}
+                      onSelectRequest={(id) => {
+                        setSelectedRequestId(id);
+                        setShowFindings(false);
+                      }}
+                      embedded
+                    />
+                  ) : (
+                    <ResultsTable
+                      requests={requests}
+                      findingsByRequestId={findingsByRequestId}
+                      selectedRequestId={selectedRequestId}
+                      onSelectRequest={setSelectedRequestId}
+                      selectedMethods={selectedMethods}
+                      selectedStatusClasses={selectedStatusClasses}
+                      urlQuery={urlQuery}
+                      issueFilter={issueFilter}
+                    />
+                  )}
+                </div>
+              </section>
+
+              <aside className="min-h-0 flex flex-col pb-2">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-sm font-semibold text-gray-900">
+                    Request details
+                  </div>
+                </div>
+                {selectedRequestId && (
+                  <div className="flex-1 min-h-0">
                     <RequestDetailsPanel
                       request={
                         requests.find((r) => r.id === selectedRequestId)!
                       }
                       findings={findingsByRequestId[selectedRequestId]}
                     />
-                  )}
-                </div>
+                  </div>
+                )}
               </aside>
             </div>
+
+            {showFindings && (
+              <div className="sr-only" aria-hidden="true" />
+            )}
           </>
         )}
       </main>
-    </>
+    </div>
   );
 }
 
-function Metric({ label, value }: { label: string; value: any }) {
+function SummaryPill({
+  label,
+  value,
+  active,
+  tone = 'neutral',
+  onClick,
+}: {
+  label: string;
+  value: number;
+  active: boolean;
+  tone?: 'neutral' | 'warning' | 'danger';
+  onClick: () => void;
+}) {
+  const base =
+    'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium';
+  const toneClass =
+    tone === 'danger'
+      ? 'border-red-200 bg-red-50 text-red-700'
+      : tone === 'warning'
+      ? 'border-amber-200 bg-amber-50 text-amber-700'
+      : 'border-gray-200 bg-white text-gray-700';
+  const activeClass = active ? 'ring-2 ring-offset-1 ring-gray-200' : '';
+
   return (
-    <div className="border border-gray-200 rounded-xl p-4">
-      <div className="text-sm text-gray-600">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-    </div>
+    <button onClick={onClick} className={`${base} ${toneClass} ${activeClass}`}>
+      <span className="text-[11px] uppercase tracking-wide">{label}</span>
+      <span className="text-xs font-semibold">{value}</span>
+    </button>
   );
 }

@@ -1,13 +1,12 @@
 'use client';
 
 import { Finding, HarRequest } from '@/types';
+import { getMethodStyle, getStatusText } from '@/lib/utils/filterStyles';
 import { SLOW_REQUEST_MS, VERY_SLOW_REQUEST_MS } from '@/lib/rules/networkRules';
 import {
   ArrowsRightLeftIcon,
   BarsArrowDownIcon,
   BarsArrowUpIcon,
-  CheckIcon,
-  ChevronDownIcon,
   ClockIcon,
   CodeBracketIcon,
   CubeIcon,
@@ -15,7 +14,6 @@ import {
   ExclamationTriangleIcon,
   FilmIcon,
   GlobeAltIcon,
-  MagnifyingGlassIcon,
   PaintBrushIcon,
   PhotoIcon,
 } from '@heroicons/react/20/solid';
@@ -31,6 +29,10 @@ interface ResultsTableProps {
   findingsByRequestId?: Record<string, Finding[]>;
   selectedRequestId?: string | null;
   onSelectRequest?: (id: string | null) => void;
+  selectedMethods?: Set<HttpMethod>;
+  selectedStatusClasses?: Set<StatusClass>;
+  urlQuery?: string;
+  issueFilter?: 'all' | 'failures' | 'critical' | 'warning';
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -58,10 +60,8 @@ function statusToClass(status: number): StatusClass {
 }
 
 function statusColor(status: number) {
-  if (status >= 500) return 'text-red-600';
-  if (status >= 400) return 'text-amber-600';
-  if (status >= 300) return 'text-blue-600';
-  return 'text-gray-900';
+  if (status < 200) return 'text-gray-900';
+  return getStatusText(statusToClass(status));
 }
 
 function durationBarColor(ms: number) {
@@ -136,42 +136,35 @@ export default function ResultsTable({
   findingsByRequestId = {},
   selectedRequestId,
   onSelectRequest,
+  selectedMethods = new Set<HttpMethod>(),
+  selectedStatusClasses = new Set<StatusClass>(),
+  urlQuery = '',
+  issueFilter = 'all',
 }: ResultsTableProps) {
-  const [selectedMethods, setSelectedMethods] = useState<Set<HttpMethod>>(new Set());
-  const [selectedStatusClasses, setSelectedStatusClasses] = useState<Set<StatusClass>>(new Set());
-  const [urlQuery, setUrlQuery] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [sortColumn, setSortColumn] = useState<SortColumn>('duration');
-  const [openDropdown, setOpenDropdown] = useState<'method' | 'status' | null>(null);
   const [isAtTop, setIsAtTop] = useState(true);
   const [topBump, setTopBump] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const bumpTimerRef = useRef<number | null>(null);
-
-  /* ---------- Outside click: close dropdown ---------- */
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const toggleSetValue = <T,>(set: Set<T>, value: T) => {
-    const next = new Set(set);
-    next.has(value) ? next.delete(value) : next.add(value);
-    return next;
-  };
 
   /* ---------- Filtering & sorting ---------- */
   const filtered = useMemo(() => {
     return requests
       .filter((r) => {
+        const findings = findingsByRequestId[r.id] ?? [];
+        const issueOk =
+          issueFilter === 'all' ||
+          (issueFilter === 'failures' && r.status >= 400) ||
+          (issueFilter === 'critical' &&
+            findings.some((f) => f.severity === 'critical')) ||
+          (issueFilter === 'warning' &&
+            findings.some((f) => f.severity === 'warning'));
+
+        if (!issueOk) return false;
+
         const methodOk =
           selectedMethods.size === 0 || selectedMethods.has(r.method as HttpMethod);
         const statusOk =
@@ -190,7 +183,16 @@ export default function ResultsTable({
             : ms(a.duration) - ms(b.duration);
         return sortDir === 'asc' ? delta : -delta;
       });
-  }, [requests, selectedMethods, selectedStatusClasses, urlQuery, sortDir, sortColumn]);
+  }, [
+    requests,
+    findingsByRequestId,
+    issueFilter,
+    selectedMethods,
+    selectedStatusClasses,
+    urlQuery,
+    sortDir,
+    sortColumn,
+  ]);
 
   const maxDuration = useMemo(
     () => Math.max(1, ...filtered.map((r) => ms(r.duration))),
@@ -241,72 +243,9 @@ export default function ResultsTable({
   if (!requests.length) return null;
 
   return (
-    <div className="space-y-3" ref={containerRef}>
-      {/* Controls */}
-      <div
-        className="flex items-center justify-between gap-4 text-sm"
-        ref={dropdownRef}
-      >
-        <div className="flex items-center gap-3">
-          {/* URL search */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={urlQuery}
-              onChange={(e) => setUrlQuery(e.target.value)}
-              placeholder="Filter URL"
-              className="pl-8 pr-2 py-1.5 w-48 border border-gray-200 rounded-md"
-            />
-          </div>
-
-          <Dropdown
-            label="Method"
-            isOpen={openDropdown === 'method'}
-            onToggle={() =>
-              setOpenDropdown(openDropdown === 'method' ? null : 'method')
-            }
-          >
-            {(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as HttpMethod[]).map(
-              (m) => (
-                <DropdownOption
-                  key={m}
-                  active={selectedMethods.has(m)}
-                  onClick={() =>
-                    setSelectedMethods((s) => toggleSetValue(s, m))
-                  }
-                >
-                  {m}
-                </DropdownOption>
-              ),
-            )}
-          </Dropdown>
-
-          <Dropdown
-            label="Status"
-            isOpen={openDropdown === 'status'}
-            onToggle={() =>
-              setOpenDropdown(openDropdown === 'status' ? null : 'status')
-            }
-          >
-            {(['2xx', '3xx', '4xx', '5xx'] as StatusClass[]).map((s) => (
-              <DropdownOption
-                key={s}
-                active={selectedStatusClasses.has(s)}
-                onClick={() =>
-                  setSelectedStatusClasses((c) => toggleSetValue(c, s))
-                }
-              >
-                {s}
-              </DropdownOption>
-            ))}
-          </Dropdown>
-        </div>
-
-        <div />
-      </div>
-
+    <div className="flex flex-col min-h-0 h-full gap-3" ref={containerRef}>
       {/* Rows */}
-      <div className="border border-gray-200 rounded-xl overflow-hidden">
+      <div className="border border-gray-200 rounded-xl overflow-hidden flex-1 min-h-0">
         <div
           ref={scrollRef}
           onScroll={() => {
@@ -326,7 +265,7 @@ export default function ResultsTable({
               );
             }
           }}
-          className="h-[837px] overflow-y-auto overscroll-contain"
+          className="h-full overflow-y-auto overscroll-contain pb-2"
         >
           <div
             className={`sticky top-0 z-10 bg-white border-b border-gray-200 grid grid-cols-[120px_1fr_240px] items-center px-3 py-2 text-xs text-gray-500 uppercase tracking-wide ${
@@ -421,7 +360,9 @@ export default function ResultsTable({
               {/* Request info */}
               <div className="space-y-1 overflow-hidden">
                 <div className="truncate text-sm font-medium">
-                  <span className="font-mono mr-2">{req.method}</span>
+                  <span className={`font-mono mr-2 ${getMethodStyle(req.method).text}`}>
+                    {req.method}
+                  </span>
                   {req.url}
                 </div>
 
@@ -512,57 +453,6 @@ export default function ResultsTable({
 /* ======================
    Small UI helpers
    ====================== */
-
-function Dropdown({
-  label,
-  isOpen,
-  onToggle,
-  children,
-}: {
-  label: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative">
-      <button
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-md hover:text-gray-900"
-      >
-        {label}
-        <ChevronDownIcon className="h-4 w-4" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-10 mt-1 w-40 bg-white border border-gray-200 rounded-md">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DropdownOption({
-  children,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50"
-    >
-      <span>{children}</span>
-      {active && <CheckIcon className="h-4 w-4" />}
-    </div>
-  );
-}
 
 function ResourceTypeIcon({ type }: { type?: string }) {
   const key = (type ?? 'request').toLowerCase();
