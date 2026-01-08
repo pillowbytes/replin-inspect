@@ -9,7 +9,7 @@ import {
   DocumentTextIcon,
   InformationCircleIcon,
 } from '@heroicons/react/20/solid';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 /* ======================
    Types
@@ -31,11 +31,19 @@ export default function RequestDetailsPanel({
   findings = [],
 }: RequestDetailsPanelProps) {
   const [tab, setTab] = useState<Tab>('overview');
+  const [isAtTop, setIsAtTop] = useState(true);
+  const [topBump, setTopBump] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const bumpTimerRef = useRef<number | null>(null);
 
   return (
     <div className="h-full flex flex-col border border-gray-200 rounded-xl overflow-hidden bg-white">
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 text-sm">
+      <div
+        className={`flex border-b border-gray-200 text-sm ${
+          isAtTop ? '' : 'shadow-sm'
+        } ${topBump ? '-translate-y-0.5 scale-y-105' : ''} origin-top transition-transform`}
+      >
         <TabButton icon={InformationCircleIcon} label="Overview" active={tab === 'overview'} onClick={() => setTab('overview')} />
         <TabButton icon={DocumentTextIcon} label="Request" active={tab === 'request'} onClick={() => setTab('request')} />
         <TabButton icon={ArrowDownTrayIcon} label="Response" active={tab === 'response'} onClick={() => setTab('response')} />
@@ -44,7 +52,27 @@ export default function RequestDetailsPanel({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 text-sm">
+      <div
+        ref={scrollRef}
+        onScroll={() => {
+          const top = scrollRef.current?.scrollTop ?? 0;
+          setIsAtTop(top <= 0);
+        }}
+        onWheel={(e) => {
+          const top = scrollRef.current?.scrollTop ?? 0;
+          if (top <= 0 && e.deltaY < 0) {
+            setTopBump(true);
+            if (bumpTimerRef.current) {
+              window.clearTimeout(bumpTimerRef.current);
+            }
+            bumpTimerRef.current = window.setTimeout(
+              () => setTopBump(false),
+              160,
+            );
+          }
+        }}
+        className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6 text-sm"
+      >
         {tab === 'overview' && <OverviewTab request={request} />}
         {tab === 'request' && <RequestTab request={request} />}
         {tab === 'response' && <ResponseTab request={request} />}

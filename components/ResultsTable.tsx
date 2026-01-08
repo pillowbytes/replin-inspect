@@ -2,14 +2,21 @@
 
 import { Finding, HarRequest } from '@/types';
 import {
-  ExclamationTriangleIcon,
-  ClockIcon,
-  ChevronDownIcon,
-  CheckIcon,
-  BarsArrowUpIcon,
+  ArrowsRightLeftIcon,
   BarsArrowDownIcon,
+  BarsArrowUpIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  CodeBracketIcon,
+  CubeIcon,
+  DocumentTextIcon,
+  ExclamationTriangleIcon,
+  FilmIcon,
+  GlobeAltIcon,
   MagnifyingGlassIcon,
-  XMarkIcon,
+  PaintBrushIcon,
+  PhotoIcon,
 } from '@heroicons/react/20/solid';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -26,6 +33,7 @@ interface ResultsTableProps {
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type StatusClass = '2xx' | '3xx' | '4xx' | '5xx';
+type SortColumn = 'time' | 'duration';
 
 /* ======================
    Helpers
@@ -33,7 +41,7 @@ type StatusClass = '2xx' | '3xx' | '4xx' | '5xx';
 
 function formatTime(ms: number) {
   const d = new Date(ms);
-  return d.toISOString().substring(11, 23); // HH:mm:ss.ms
+  return d.toISOString().substring(11, 23);
 }
 
 function ms(value?: number) {
@@ -66,6 +74,47 @@ function sizeLabel(bytes?: number) {
   return `${Math.round(bytes / 1024)} KB`;
 }
 
+const TIMING_COLORS: Record<
+  'blocked' | 'dns' | 'connect' | 'ssl' | 'send' | 'wait' | 'receive',
+  string
+> = {
+  blocked: 'bg-gray-400',
+  dns: 'bg-purple-500',
+  connect: 'bg-blue-500',
+  ssl: 'bg-indigo-500',
+  send: 'bg-slate-500',
+  wait: 'bg-amber-500',
+  receive: 'bg-emerald-500',
+};
+
+function normalizeTimings(timings?: HarRequest['timings']) {
+  if (!timings) return [];
+  return Object.entries(timings)
+    .map(([key, value]) => ({
+      key: key as keyof typeof TIMING_COLORS,
+      value: value != null && value >= 0 ? Math.round(value) : 0,
+    }))
+    .filter((t) => t.value > 0);
+}
+
+function totalRequestSize(req: HarRequest) {
+  return (
+    req.sizes?.requestTotal ??
+    req.requestSize ??
+    req.requestBody?.size ??
+    req.sizes?.requestBody
+  );
+}
+
+function totalResponseSize(req: HarRequest) {
+  return (
+    req.sizes?.responseTotal ??
+    req.responseSize ??
+    req.responseBody?.size ??
+    req.sizes?.responseBody
+  );
+}
+
 /* ======================
    Component
    ====================== */
@@ -80,11 +129,17 @@ export default function ResultsTable({
   const [selectedStatusClasses, setSelectedStatusClasses] = useState<Set<StatusClass>>(new Set());
   const [urlQuery, setUrlQuery] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('duration');
   const [openDropdown, setOpenDropdown] = useState<'method' | 'status' | null>(null);
+  const [isAtTop, setIsAtTop] = useState(true);
+  const [topBump, setTopBump] = useState(false);
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const bumpTimerRef = useRef<number | null>(null);
 
-  /* ---------- Close dropdown on outside click ---------- */
+  /* ---------- Outside click: close dropdown ---------- */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (!dropdownRef.current?.contains(e.target as Node)) {
@@ -101,6 +156,7 @@ export default function ResultsTable({
     return next;
   };
 
+  /* ---------- Filtering & sorting ---------- */
   const filtered = useMemo(() => {
     return requests
       .filter((r) => {
@@ -116,46 +172,55 @@ export default function ResultsTable({
         return methodOk && statusOk && urlOk;
       })
       .sort((a, b) => {
-        const delta = ms(a.duration) - ms(b.duration);
+        const delta =
+          sortColumn === 'time'
+            ? a.startTime - b.startTime
+            : ms(a.duration) - ms(b.duration);
         return sortDir === 'asc' ? delta : -delta;
       });
-  }, [requests, selectedMethods, selectedStatusClasses, urlQuery, sortDir]);
+  }, [requests, selectedMethods, selectedStatusClasses, urlQuery, sortDir, sortColumn]);
 
-  /* ---------- STEP 2: auto-select first visible request ---------- */
+  const maxDuration = useMemo(
+    () => Math.max(1, ...filtered.map((r) => ms(r.duration))),
+    [filtered],
+  );
+
+  /* ---------- Auto-select first visible ---------- */
   useEffect(() => {
-    if (!onSelectRequest) return;
+    if (!onSelectRequest || filtered.length === 0) return;
 
-    if (!selectedRequestId && filtered.length > 0) {
+    const stillVisible = filtered.some((r) => r.id === selectedRequestId);
+    if (!selectedRequestId || !stillVisible) {
       onSelectRequest(filtered[0].id);
     }
   }, [filtered, selectedRequestId, onSelectRequest]);
 
-  /* ---------- STEP 2: keyboard navigation ---------- */
+  /* ---------- Keyboard navigation (scoped) ---------- */
   useEffect(() => {
     if (!onSelectRequest || filtered.length === 0) return;
 
-      const handler = (e: KeyboardEvent) => {
-        if (!selectedRequestId) return;
+    const handler = (e: KeyboardEvent) => {
+      if (!containerRef.current?.contains(document.activeElement)) return;
+      if (!selectedRequestId) return;
 
-        const idx = filtered.findIndex((r) => r.id === selectedRequestId);
-        if (idx === -1) return;
+      const idx = filtered.findIndex((r) => r.id === selectedRequestId);
+      if (idx === -1) return;
 
-        if (e.key === 'ArrowDown' && idx < filtered.length - 1) {
-          e.preventDefault();
-          onSelectRequest(filtered[idx + 1].id);
-        }
+      if (e.key === 'ArrowDown' && idx < filtered.length - 1) {
+        e.preventDefault();
+        onSelectRequest(filtered[idx + 1].id);
+      }
 
-        if (e.key === 'ArrowUp' && idx > 0) {
-          e.preventDefault();
-          onSelectRequest(filtered[idx - 1].id);
-        }
+      if (e.key === 'ArrowUp' && idx > 0) {
+        e.preventDefault();
+        onSelectRequest(filtered[idx - 1].id);
+      }
 
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onSelectRequest(null);
-        }
-      };
-
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onSelectRequest(null);
+      }
+    };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -164,9 +229,12 @@ export default function ResultsTable({
   if (!requests.length) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" ref={containerRef}>
       {/* Controls */}
-      <div className="flex items-center justify-between gap-4 text-sm" ref={dropdownRef}>
+      <div
+        className="flex items-center justify-between gap-4 text-sm"
+        ref={dropdownRef}
+      >
         <div className="flex items-center gap-3">
           {/* URL search */}
           <div className="relative">
@@ -222,43 +290,112 @@ export default function ResultsTable({
           </Dropdown>
         </div>
 
-        {/* Sort */}
-        <button
-          onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-          className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
-        >
-          Duration
-          {sortDir === 'asc' ? (
-            <BarsArrowUpIcon className="h-4 w-4" />
-          ) : (
-            <BarsArrowDownIcon className="h-4 w-4" />
-          )}
-        </button>
-      </div>
-
-      {/* Column headers */}
-      <div className="grid grid-cols-[120px_1fr_200px] px-3 text-xs text-gray-500 uppercase tracking-wide">
-        <div className="flex items-center gap-1">
-          <ClockIcon className="h-3 w-3" />
-          Time
-        </div>
-        <div>Request</div>
-        <div className="text-right">Timing</div>
+        <div />
       </div>
 
       {/* Rows */}
-      <div className="border border-gray-200 rounded-xl overflow-hidden divide-y">
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div
+          ref={scrollRef}
+          onScroll={() => {
+            const top = scrollRef.current?.scrollTop ?? 0;
+            setIsAtTop(top <= 0);
+          }}
+          onWheel={(e) => {
+            const top = scrollRef.current?.scrollTop ?? 0;
+            if (top <= 0 && e.deltaY < 0) {
+              setTopBump(true);
+              if (bumpTimerRef.current) {
+                window.clearTimeout(bumpTimerRef.current);
+              }
+              bumpTimerRef.current = window.setTimeout(
+                () => setTopBump(false),
+                160,
+              );
+            }
+          }}
+          className="h-[670px] overflow-y-auto overscroll-contain"
+        >
+          <div
+            className={`sticky top-0 z-10 bg-white border-b border-gray-200 grid grid-cols-[120px_1fr_240px] px-3 text-xs text-gray-500 uppercase tracking-wide ${
+              isAtTop ? '' : 'shadow-sm'
+            } ${topBump ? '-translate-y-0.5 scale-y-105' : ''} origin-top transition-transform`}
+          >
+            <button
+              onClick={() => {
+                setSortColumn('time');
+                setSortDir((d) =>
+                  sortColumn === 'time' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'
+                );
+              }}
+              className="flex items-center gap-1 text-left hover:text-gray-700"
+            >
+              <ClockIcon className="h-3 w-3" />
+              Time
+              {sortColumn === 'time' &&
+                (sortDir === 'asc' ? (
+                  <BarsArrowUpIcon className="h-3 w-3" />
+                ) : (
+                  <BarsArrowDownIcon className="h-3 w-3" />
+                ))}
+            </button>
+            <div className="space-y-1">
+              <div>Request</div>
+              <div className="flex items-center gap-3 text-[10px] text-gray-400 normal-case tracking-normal">
+                <span>Status</span>
+                <span>Type</span>
+                <span>Size sent → recv</span>
+                <span>Findings</span>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setSortColumn('duration');
+                setSortDir((d) =>
+                  sortColumn === 'duration' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'
+                );
+              }}
+              className="flex items-center justify-end gap-1 text-right hover:text-gray-700"
+            >
+              Timing
+              {sortColumn === 'duration' &&
+                (sortDir === 'asc' ? (
+                  <BarsArrowUpIcon className="h-3 w-3" />
+                ) : (
+                  <BarsArrowDownIcon className="h-3 w-3" />
+                ))}
+            </button>
+          </div>
+
+          <div className="divide-y">
         {filtered.map((req) => {
           const findings = findingsByRequestId[req.id] ?? [];
           const selected = selectedRequestId === req.id;
           const durationMs = ms(req.duration);
+          const barWidth = Math.max(
+            4,
+            Math.round((durationMs / maxDuration) * 100),
+          );
+          const timingItems = normalizeTimings(req.timings);
+          const timingTotal =
+            timingItems.reduce((s, t) => s + t.value, 0) || durationMs;
 
           return (
             <div
               key={req.id}
+              tabIndex={0}
+              aria-selected={selected}
               onClick={() => onSelectRequest?.(req.id)}
-              className={`grid grid-cols-[120px_1fr_200px] items-center px-3 py-3 cursor-pointer hover:bg-gray-50 ${
-                selected ? 'bg-blue-50 ring-1 ring-blue-200' : ''
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectRequest?.(req.id);
+                }
+              }}
+              className={`grid grid-cols-[120px_1fr_240px] items-center px-3 py-3 cursor-pointer hover:bg-gray-50 focus:outline-none ${
+                selected
+                  ? 'bg-white ring-1 ring-slate-300 border-l-4 border-blue-500 shadow-sm'
+                  : ''
               }`}
             >
               {/* Time */}
@@ -278,9 +415,9 @@ export default function ResultsTable({
                   <span className={statusColor(req.status)}>
                     {req.status}
                   </span>
-                  <span>{req.resourceType ?? 'request'}</span>
+                  <ResourceTypeIcon type={req.resourceType} />
                   <span>
-                    {sizeLabel(req.requestSize)} → {sizeLabel(req.responseSize)}
+                    {sizeLabel(totalRequestSize(req))} → {sizeLabel(totalResponseSize(req))}
                   </span>
 
                   {findings.length > 0 && (
@@ -294,15 +431,28 @@ export default function ResultsTable({
 
               {/* Timing */}
               <div className="flex items-center gap-2">
-                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${durationBarColor(durationMs)}`}
-                    style={{ width: '60%' }}
-                  />
-                </div>
-                <div className="text-xs text-gray-600 w-14 text-right">
-                  {durationMs} ms
-                </div>
+                {timingItems.length > 0 ? (
+                  <>
+                    <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden flex">
+                      {timingItems.map((t) => (
+                        <div
+                          key={t.key}
+                          title={`${t.key} (${t.value} ms)`}
+                          className={`${TIMING_COLORS[t.key]} h-full`}
+                          style={{ width: `${(t.value / timingTotal) * 100}%` }}
+                        />
+                      ))}
+                    </div>
+                    <div className="text-xs text-gray-600 w-16 text-right">
+                      {durationMs} ms
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between w-full text-xs text-gray-400">
+                    <div className="h-2 w-full rounded-full border border-dashed border-gray-300" />
+                    <span className="ml-2 w-16 text-right">No timing</span>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -313,6 +463,8 @@ export default function ResultsTable({
             No requests match the selected filters.
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -337,6 +489,7 @@ function Dropdown({
     <div className="relative">
       <button
         onClick={onToggle}
+        aria-expanded={isOpen}
         className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-md hover:text-gray-900"
       >
         {label}
@@ -372,19 +525,28 @@ function DropdownOption({
   );
 }
 
-function FilterChip({
-  label,
-  onRemove,
-}: {
-  label: string;
-  onRemove: () => void;
-}) {
+function ResourceTypeIcon({ type }: { type?: string }) {
+  const key = (type ?? 'request').toLowerCase();
+  const mapping: Record<string, { label: string; icon: any }> = {
+    document: { label: 'Document', icon: DocumentTextIcon },
+    script: { label: 'Script', icon: CodeBracketIcon },
+    stylesheet: { label: 'Stylesheet', icon: PaintBrushIcon },
+    image: { label: 'Image', icon: PhotoIcon },
+    media: { label: 'Media', icon: FilmIcon },
+    font: { label: 'Font', icon: CubeIcon },
+    xhr: { label: 'XHR', icon: ArrowsRightLeftIcon },
+    fetch: { label: 'Fetch', icon: ArrowsRightLeftIcon },
+  };
+
+  const item = mapping[key] ?? { label: type ?? 'Request', icon: GlobeAltIcon };
+  const Icon = item.icon;
+
   return (
-    <div className="flex items-center gap-1 px-2 py-1 border border-gray-200 rounded-full bg-gray-50">
-      <span>{label}</span>
-      <button onClick={onRemove} className="text-gray-500 hover:text-gray-900">
-        <XMarkIcon className="h-3 w-3" />
-      </button>
-    </div>
+    <span className="relative inline-flex items-center group text-gray-600">
+      <Icon className="h-4 w-4" />
+      <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+        {item.label}
+      </span>
+    </span>
   );
 }
