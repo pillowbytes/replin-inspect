@@ -1,6 +1,7 @@
 'use client';
 
 import { Finding, HarRequest, HarTimings } from '@/types';
+import { getMethodStyle, getStatusText } from '@/lib/utils/filterStyles';
 import {
   ArrowDownTrayIcon,
   BeakerIcon,
@@ -90,8 +91,20 @@ export default function RequestDetailsPanel({
 function OverviewTab({ request }: { request: HarRequest }) {
   return (
     <Section title="Request summary">
-      <KeyValue label="Method" value={request.method} />
-      <KeyValue label="Status" value={request.status} />
+      <KeyValue
+        label="Method"
+        value={request.method}
+        className={getMethodStyle(request.method).text}
+      />
+      <KeyValue
+        label="Status"
+        value={request.status}
+        className={
+          request.status < 200
+            ? 'text-gray-900'
+            : getStatusText(statusToClass(request.status))
+        }
+      />
       <KeyValue label="Domain" value={request.domain ?? '—'} />
       <KeyValue label="Path" value={request.path ?? '—'} wrap />
       <KeyValue label="Duration" value={`${Math.round(request.duration)} ms`} />
@@ -109,7 +122,11 @@ function RequestTab({ request }: { request: HarRequest }) {
   return (
     <>
       <Section title="Request">
-        <KeyValue label="Method" value={request.method} />
+        <KeyValue
+          label="Method"
+          value={request.method}
+          className={getMethodStyle(request.method).text}
+        />
         <KeyValue label="Path" value={request.path ?? '—'} wrap />
       </Section>
 
@@ -138,7 +155,15 @@ function ResponseTab({ request }: { request: HarRequest }) {
   return (
     <>
       <Section title="Response">
-        <KeyValue label="Status" value={`${request.status} ${request.statusText ?? ''}`} />
+        <KeyValue
+          label="Status"
+          value={`${request.status} ${request.statusText ?? ''}`}
+          className={
+            request.status < 200
+              ? 'text-gray-900'
+              : getStatusText(statusToClass(request.status))
+          }
+        />
         <KeyValue label="From cache" value={request.fromCache ? 'Yes' : 'No'} />
         <KeyValue label="Server IP" value={request.serverIp ?? '—'} />
       </Section>
@@ -361,16 +386,22 @@ function KeyValue({
   value,
   wrap,
   mono,
+  className,
 }: {
   label: string;
   value: string | number;
   wrap?: boolean;
   mono?: boolean;
+  className?: string;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
       <div className="text-xs text-gray-500">{label}</div>
-      <div className={`text-sm text-gray-900 ${wrap ? 'break-all' : ''} ${mono ? 'font-mono' : ''}`}>
+      <div
+        className={`text-sm text-gray-900 ${wrap ? 'break-all' : ''} ${
+          mono ? 'font-mono' : ''
+        } ${className ?? ''}`}
+      >
         {value}
       </div>
     </div>
@@ -443,6 +474,13 @@ function normalizeTimings(timings?: HarTimings) {
       value: value != null && value >= 0 ? Math.round(value) : 0,
     }))
     .filter((t) => t.value > 0);
+}
+
+function statusToClass(status: number) {
+  if (status >= 500) return '5xx';
+  if (status >= 400) return '4xx';
+  if (status >= 300) return '3xx';
+  return '2xx';
 }
 
 function formatBytes(bytes?: number) {
