@@ -162,7 +162,7 @@ export default function HomePage() {
               </div>
 
               <aside className="pt-12">
-                <div className="h-[670px]">
+                <div className="h-[837px]">
                   {selectedRequestId && (
                     <RequestDetailsPanel
                       request={

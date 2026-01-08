@@ -1,6 +1,7 @@
 'use client';
 
 import { Finding, HarRequest } from '@/types';
+import { SLOW_REQUEST_MS, VERY_SLOW_REQUEST_MS } from '@/lib/rules/networkRules';
 import {
   ArrowsRightLeftIcon,
   BarsArrowDownIcon,
@@ -19,6 +20,7 @@ import {
   PhotoIcon,
 } from '@heroicons/react/20/solid';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 /* ======================
    Types & Props
@@ -66,6 +68,16 @@ function durationBarColor(ms: number) {
   if (ms > 1500) return 'bg-red-500';
   if (ms > 500) return 'bg-amber-500';
   return 'bg-emerald-500';
+}
+
+function durationTextStyle(ms: number) {
+  if (ms >= VERY_SLOW_REQUEST_MS) {
+    return 'text-red-600 font-semibold';
+  }
+  if (ms >= SLOW_REQUEST_MS) {
+    return 'text-amber-600 font-semibold';
+  }
+  return 'text-emerald-600';
 }
 
 function sizeLabel(bytes?: number) {
@@ -314,10 +326,10 @@ export default function ResultsTable({
               );
             }
           }}
-          className="h-[670px] overflow-y-auto overscroll-contain"
+          className="h-[837px] overflow-y-auto overscroll-contain"
         >
           <div
-            className={`sticky top-0 z-10 bg-white border-b border-gray-200 grid grid-cols-[120px_1fr_240px] px-3 text-xs text-gray-500 uppercase tracking-wide ${
+            className={`sticky top-0 z-10 bg-white border-b border-gray-200 grid grid-cols-[120px_1fr_240px] items-center px-3 py-2 text-xs text-gray-500 uppercase tracking-wide ${
               isAtTop ? '' : 'shadow-sm'
             } ${topBump ? '-translate-y-0.5 scale-y-105' : ''} origin-top transition-transform`}
           >
@@ -379,6 +391,8 @@ export default function ResultsTable({
           const timingItems = normalizeTimings(req.timings);
           const timingTotal =
             timingItems.reduce((s, t) => s + t.value, 0) || durationMs;
+          const requestSizeLabel = sizeLabel(totalRequestSize(req));
+          const responseSizeLabel = sizeLabel(totalResponseSize(req));
 
           return (
             <div
@@ -412,19 +426,37 @@ export default function ResultsTable({
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-gray-600">
-                  <span className={statusColor(req.status)}>
-                    {req.status}
-                  </span>
+                  <Tooltip label="HTTP status code from the response.">
+                    <span className={statusColor(req.status)}>
+                      {req.status}
+                    </span>
+                  </Tooltip>
                   <ResourceTypeIcon type={req.resourceType} />
-                  <span>
-                    {sizeLabel(totalRequestSize(req))} → {sizeLabel(totalResponseSize(req))}
+                  <span className="flex items-center gap-1">
+                    <Tooltip
+                      label={`Request Size ${
+                        requestSizeLabel === '—' ? 'Not available' : requestSizeLabel
+                      }`}
+                    >
+                      <span>{requestSizeLabel}</span>
+                    </Tooltip>
+                    <span>→</span>
+                    <Tooltip
+                      label={`Response Size ${
+                        responseSizeLabel === '—' ? 'Not available' : responseSizeLabel
+                      }`}
+                    >
+                      <span>{responseSizeLabel}</span>
+                    </Tooltip>
                   </span>
 
                   {findings.length > 0 && (
-                    <span className="flex items-center gap-1 text-amber-600">
-                      <ExclamationTriangleIcon className="h-3 w-3" />
-                      {findings.length}
-                    </span>
+                    <Tooltip label="Issues detected for this request.">
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <ExclamationTriangleIcon className="h-3 w-3" />
+                        {findings.length}
+                      </span>
+                    </Tooltip>
                   )}
                 </div>
               </div>
@@ -433,24 +465,31 @@ export default function ResultsTable({
               <div className="flex items-center gap-2">
                 {timingItems.length > 0 ? (
                   <>
-                    <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden flex">
-                      {timingItems.map((t) => (
-                        <div
-                          key={t.key}
-                          title={`${t.key} (${t.value} ms)`}
-                          className={`${TIMING_COLORS[t.key]} h-full`}
-                          style={{ width: `${(t.value / timingTotal) * 100}%` }}
-                        />
-                      ))}
+                    <div className="h-3 w-[70%] bg-gray-200 rounded-full flex overflow-visible">
+                      {timingItems.map((t) => {
+                        const label = `${t.key} (${t.value} ms)`;
+                        return (
+                          <Tooltip
+                            key={t.key}
+                            label={label}
+                            className={`${TIMING_COLORS[t.key]} h-full first:rounded-l-full last:rounded-r-full`}
+                            style={{ width: `${(t.value / timingTotal) * 100}%` }}
+                          >
+                            <span className="sr-only">{label}</span>
+                          </Tooltip>
+                        );
+                      })}
                     </div>
-                    <div className="text-xs text-gray-600 w-16 text-right">
+                    <div className={`text-xs w-16 text-right ${durationTextStyle(durationMs)}`}>
                       {durationMs} ms
                     </div>
                   </>
                 ) : (
                   <div className="flex items-center justify-between w-full text-xs text-gray-400">
-                    <div className="h-2 w-full rounded-full border border-dashed border-gray-300" />
-                    <span className="ml-2 w-16 text-right">No timing</span>
+                    <div className="h-3 w-[70%] rounded-full border border-dashed border-gray-300" />
+                    <Tooltip label="Timing data not available in this HAR entry.">
+                      <span className="ml-2 w-16 text-right">No timing</span>
+                    </Tooltip>
                   </div>
                 )}
               </div>
@@ -540,13 +579,75 @@ function ResourceTypeIcon({ type }: { type?: string }) {
 
   const item = mapping[key] ?? { label: type ?? 'Request', icon: GlobeAltIcon };
   const Icon = item.icon;
+  const label = `Request resource type: ${item.label}`;
 
   return (
-    <span className="relative inline-flex items-center group text-gray-600">
-      <Icon className="h-4 w-4" />
-      <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-        {item.label}
+    <Tooltip label={label}>
+      <span className="inline-flex items-center text-gray-600">
+        <Icon className="h-4 w-4" />
       </span>
+    </Tooltip>
+  );
+}
+
+function Tooltip({
+  label,
+  children,
+  className,
+  style,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPos({
+      left: rect.left + rect.width / 2,
+      top: rect.top,
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = () => updatePosition();
+    window.addEventListener('scroll', handle, true);
+    window.addEventListener('resize', handle);
+    return () => {
+      window.removeEventListener('scroll', handle, true);
+      window.removeEventListener('resize', handle);
+    };
+  }, [open]);
+
+  return (
+    <span
+      ref={triggerRef}
+      className={`inline-flex items-center ${className ?? ''}`}
+      style={style}
+      onMouseEnter={() => {
+        updatePosition();
+        setOpen(true);
+      }}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {children}
+      {open &&
+        pos &&
+        createPortal(
+          <span
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 shadow-sm"
+            style={{ left: pos.left, top: pos.top - 8 }}
+          >
+            {label}
+          </span>,
+          document.body
+        )}
     </span>
   );
 }
