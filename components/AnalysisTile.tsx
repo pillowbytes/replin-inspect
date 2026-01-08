@@ -7,7 +7,8 @@ import {
   CheckCircleIcon,
   CodeBracketIcon,
 } from '@heroicons/react/20/solid';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface AnalysisTileProps {
   findings: Finding[];
@@ -156,7 +157,6 @@ export default function AnalysisTile({
                             }))
                           }
                           className="flex items-center justify-between w-full text-left text-sm text-gray-700 hover:text-gray-900"
-                          title={url}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <ChevronDownIcon
@@ -164,9 +164,11 @@ export default function AnalysisTile({
                                 openUrl ? 'rotate-180' : ''
                               }`}
                             />
-                            <span className="font-mono truncate">
-                              {truncateMiddle(url)}
-                            </span>
+                            <Tooltip label={url}>
+                              <span className="font-mono truncate">
+                                {truncateMiddle(url)}
+                              </span>
+                            </Tooltip>
                           </div>
                           <span className="text-xs text-gray-500">
                             {allGroups.reduce((s, [, a]) => s + a.length, 0)}
@@ -239,9 +241,10 @@ export default function AnalysisTile({
                                           onSelectRequest(f.relatedRequestId)
                                         }
                                         className="block w-full text-left text-xs text-gray-700 hover:text-blue-600"
-                                        title={f.description}
                                       >
-                                        {msg}
+                                        <Tooltip label={f.description}>
+                                          <span>{msg}</span>
+                                        </Tooltip>
                                       </button>
                                     ))}
                                   </div>
@@ -306,5 +309,62 @@ export default function AnalysisTile({
         })}
       </div>
     </div>
+  );
+}
+
+function Tooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPos({
+      left: rect.left + rect.width / 2,
+      top: rect.top,
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = () => updatePosition();
+    window.addEventListener('scroll', handle, true);
+    window.addEventListener('resize', handle);
+    return () => {
+      window.removeEventListener('scroll', handle, true);
+      window.removeEventListener('resize', handle);
+    };
+  }, [open]);
+
+  return (
+    <span
+      ref={triggerRef}
+      className="inline-flex items-center"
+      onMouseEnter={() => {
+        updatePosition();
+        setOpen(true);
+      }}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {children}
+      {open &&
+        pos &&
+        createPortal(
+          <span
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 shadow-sm"
+            style={{ left: pos.left, top: pos.top - 8 }}
+          >
+            {label}
+          </span>,
+          document.body
+        )}
+    </span>
   );
 }

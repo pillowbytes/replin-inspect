@@ -161,15 +161,17 @@ export default function HomePage() {
                 />
               </div>
 
-              <aside>
-                {selectedRequestId && (
-                  <RequestDetailsPanel
-                    request={
-                      requests.find((r) => r.id === selectedRequestId)!
-                    }
-                    findings={findingsByRequestId[selectedRequestId]}
-                  />
-                )}
+              <aside className="pt-12">
+                <div className="h-[837px]">
+                  {selectedRequestId && (
+                    <RequestDetailsPanel
+                      request={
+                        requests.find((r) => r.id === selectedRequestId)!
+                      }
+                      findings={findingsByRequestId[selectedRequestId]}
+                    />
+                  )}
+                </div>
               </aside>
             </div>
           </>

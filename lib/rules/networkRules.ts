@@ -4,8 +4,8 @@ import { Finding, HarRequest } from '../../types';
    Thresholds (tunable later)
    ========================= */
 
-const SLOW_REQUEST_MS = 2000;
-const VERY_SLOW_REQUEST_MS = 5000;
+export const SLOW_REQUEST_MS = 2000;
+export const VERY_SLOW_REQUEST_MS = 5000;
 
 const LARGE_REQUEST_BYTES = 500 * 1024;        // 500 KB
 const LARGE_RESPONSE_BYTES = 1 * 1024 * 1024;  // 1 MB
