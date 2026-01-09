@@ -240,6 +240,17 @@ export default function ResultsTable({
     return () => window.removeEventListener('keydown', handler);
   }, [filtered, selectedRequestId, onSelectRequest]);
 
+  useEffect(() => {
+    if (!selectedRequestId) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    const el = container.querySelector(
+      `[data-request-id="${selectedRequestId}"]`
+    ) as HTMLElement | null;
+    if (!el) return;
+    el.scrollIntoView({ block: 'center' });
+  }, [selectedRequestId]);
+
   if (!requests.length) return null;
 
   return (
@@ -336,6 +347,7 @@ export default function ResultsTable({
           return (
             <div
               key={req.id}
+              data-request-id={req.id}
               tabIndex={0}
               aria-selected={selected}
               onClick={() => onSelectRequest?.(req.id)}
