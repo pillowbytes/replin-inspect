@@ -21,6 +21,7 @@ export function runAllRules(
   context: RuleContext = { requiredAuthHeader: 'Authorization' }
 ): Finding[] {
   const requiredHeader = context.requiredAuthHeader ?? 'Authorization';
+  const requestsById = new Map(requests.map((r) => [r.id, r]));
 
   const findings: Finding[] = [
     ...detectFailedRequests(requests),
@@ -34,10 +35,82 @@ export function runAllRules(
   ];
 
   if (token) {
-    findings.push(...detectTokenIssues(token));
+    findings.push(...attachTokenFindings(requests, token));
   }
 
-  return dedupeFindings(findings);
+  const normalized = findings.map((f) =>
+    normalizeSeverity(f, requestsById.get(f.relatedRequestId ?? ''))
+  );
+
+  return dedupeFindings(normalized);
+}
+
+function attachTokenFindings(
+  requests: HarRequest[],
+  token: TokenInfo
+): Finding[] {
+  const tokenFindings = detectTokenIssues(token);
+  if (tokenFindings.length === 0) return [];
+
+  const authRequests = requests.filter(
+    (r) => Boolean(r.headers['authorization'])
+  );
+  if (authRequests.length === 0) return [];
+
+  const tokenValue = getTokenValue(token);
+
+  return authRequests.flatMap((req) => {
+    const authHeader = req.headers['authorization'] ?? '';
+    const headerToken = extractBearerToken(authHeader);
+    if (!headerToken) return [];
+
+    if (tokenValue && headerToken && headerToken !== tokenValue) {
+      return [];
+    }
+
+    return tokenFindings
+      .map((f) => {
+        if (f.type === 'token_expired') {
+          const exp = token.payload?.exp;
+          if (exp && req.startTime) {
+            const requestSec = Math.floor(req.startTime / 1000);
+            if (requestSec <= exp) return null;
+            return { ...f, relatedRequestId: req.id, confidence: 'high' } as Finding;
+          }
+        }
+
+        return { ...f, relatedRequestId: req.id };
+      })
+      .filter((f): f is Finding => Boolean(f));
+  });
+}
+
+function normalizeSeverity(finding: Finding, req?: HarRequest): Finding {
+  if (!req) return finding;
+  const criticalTypes = new Set([
+    'failed_request',
+    'auth_request_failed',
+    'auth_forbidden',
+    'cors_preflight_failed',
+  ]);
+
+  if (req.status >= 500 && finding.severity === 'warning') {
+    if (!criticalTypes.has(finding.type)) return finding;
+    return { ...finding, severity: 'critical' };
+  }
+  if (req.status >= 400 && finding.severity === 'info') {
+    return { ...finding, severity: 'warning' };
+  }
+  return finding;
+}
+
+function extractBearerToken(header: string) {
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
+}
+
+function getTokenValue(token: TokenInfo) {
+  return (token as any).token ?? (token as any).raw ?? '';
 }
 
 /* =========================
@@ -48,7 +121,7 @@ function dedupeFindings(findings: Finding[]): Finding[] {
   const seen = new Set<string>();
 
   return findings.filter(f => {
-    const key = `${f.type}|${f.relatedRequestId ?? 'global'}`;
+    const key = `${f.dedupeKey ?? f.type}|${f.relatedRequestId ?? 'global'}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

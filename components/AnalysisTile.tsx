@@ -199,6 +199,11 @@ export default function AnalysisTile({
                                       <div className="text-gray-900">
                                         {msg}
                                       </div>
+                                      {sample.confidence && (
+                                        <div className="text-[11px] text-gray-500">
+                                          Confidence: {sample.confidence}
+                                        </div>
+                                      )}
                                       {sample.suggestedAction && (
                                         <div className="text-xs text-gray-500">
                                           {sample.suggestedAction}

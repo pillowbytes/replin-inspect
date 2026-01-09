@@ -13,6 +13,25 @@ const LARGE_RESPONSE_BYTES = 1 * 1024 * 1024;  // 1 MB
 const HIGH_DNS_MS = 200;
 const HIGH_SSL_MS = 500;
 
+const RESOURCE_THRESHOLDS: Record<
+  string,
+  {
+    requestBytes?: number;
+    responseBytes?: number;
+    slowMs?: number;
+    verySlowMs?: number;
+  }
+> = {
+  image: { responseBytes: 2 * 1024 * 1024, slowMs: 3000, verySlowMs: 7000 },
+  media: { responseBytes: 5 * 1024 * 1024, slowMs: 5000, verySlowMs: 10000 },
+  font: { responseBytes: 1.5 * 1024 * 1024, slowMs: 3000, verySlowMs: 7000 },
+  script: { responseBytes: 1.5 * 1024 * 1024, slowMs: 2500, verySlowMs: 6000 },
+  stylesheet: { responseBytes: 1.5 * 1024 * 1024, slowMs: 2500, verySlowMs: 6000 },
+  xhr: { responseBytes: 1 * 1024 * 1024, slowMs: 2000, verySlowMs: 5000 },
+  fetch: { responseBytes: 1 * 1024 * 1024, slowMs: 2000, verySlowMs: 5000 },
+  document: { responseBytes: 1 * 1024 * 1024, slowMs: 2000, verySlowMs: 5000 },
+};
+
 /* =========================
    Failed Requests
    ========================= */
@@ -64,16 +83,106 @@ export function detectMissingHeaders(
   headerName: string
 ): Finding[] {
   const lower = headerName.toLowerCase();
+  const authRequired = buildAuthRequiredIndex(requests, lower);
 
   return requests
-    .filter(req => !req.headers[lower])
-    .map(req => ({
-      type: 'missing_header',
-      description: `Missing ${headerName} header on request to ${req.url}`,
-      severity: 'info',
-      relatedRequestId: req.id,
-      suggestedAction: `Ensure the ${headerName} header is set on the client.`,
-    }));
+    .filter(req => shouldCheckAuthHeader(req, lower))
+    .map(req => {
+      if (req.headers[lower]) return null;
+
+      if (lower !== 'authorization') {
+        return {
+          type: 'missing_header',
+          description: `Missing ${headerName} header on request to ${req.url}`,
+          severity: 'info',
+          relatedRequestId: req.id,
+          suggestedAction: `Ensure the ${headerName} header is set on the client.`,
+        } as Finding;
+      }
+
+      const confidence = authRequired[req.id];
+      if (!confidence) return null;
+
+      const prefix =
+        confidence === 'high'
+          ? 'Missing auth header on a protected request'
+          : confidence === 'medium'
+          ? 'Likely missing auth header'
+          : 'Possible missing auth header';
+
+      return {
+        type: 'missing_header',
+        description: `${prefix} for ${req.url}`,
+        severity: confidence === 'high' ? 'warning' : 'info',
+        confidence,
+        relatedRequestId: req.id,
+        suggestedAction: `Ensure the ${headerName} header is set on the client.`,
+      } as Finding;
+    })
+    .filter((f): f is Finding => Boolean(f));
+}
+
+function shouldCheckAuthHeader(req: HarRequest, lowerHeader: string) {
+  if (lowerHeader !== 'authorization') return true;
+  const resource = (req.resourceType ?? '').toLowerCase();
+  if (['image', 'font', 'stylesheet', 'script', 'media'].includes(resource)) {
+    return false;
+  }
+  return true;
+}
+
+function buildAuthRequiredIndex(
+  requests: HarRequest[],
+  lowerHeader: string
+): Record<string, 'high' | 'medium' | 'low' | undefined> {
+  if (lowerHeader !== 'authorization') return {};
+
+  const authPaths = new Set<string>();
+  const map: Record<string, 'high' | 'medium' | 'low' | undefined> = {};
+
+  requests.forEach(req => {
+    if (req.headers[lowerHeader]) {
+      authPaths.add(authKey(req));
+    }
+  });
+
+  requests.forEach(req => {
+    const responseAuth =
+      req.status === 401 ||
+      req.status === 403 ||
+      Boolean(req.responseHeaders['www-authenticate']);
+
+    if (responseAuth) {
+      map[req.id] = 'high';
+      return;
+    }
+
+    if (authPaths.has(authKey(req))) {
+      map[req.id] = 'medium';
+      return;
+    }
+
+    if (isLikelyProtectedPath(req.path)) {
+      map[req.id] = 'low';
+    }
+  });
+
+  return map;
+}
+
+function authKey(req: HarRequest) {
+  return `${req.domain ?? ''}${req.path ?? ''}`;
+}
+
+function isLikelyProtectedPath(path?: string) {
+  if (!path) return false;
+  return (
+    path.startsWith('/api') ||
+    path.startsWith('/user') ||
+    path.startsWith('/account') ||
+    path.startsWith('/profile') ||
+    path.startsWith('/admin')
+  );
 }
 
 /* =========================
@@ -82,12 +191,17 @@ export function detectMissingHeaders(
 
 export function detectSlowRequests(requests: HarRequest[]): Finding[] {
   return requests
-    .filter(req => req.duration >= SLOW_REQUEST_MS)
+    .filter(req => {
+      const { slowMs } = getThresholds(req.resourceType);
+      return req.duration >= slowMs;
+    })
     .map(req => ({
       type: 'slow_request',
       description: `Request to ${req.url} took ${req.duration} ms to complete`,
       severity:
-        req.duration >= VERY_SLOW_REQUEST_MS ? 'critical' : 'warning',
+        req.duration >= getThresholds(req.resourceType).verySlowMs
+          ? 'critical'
+          : 'warning',
       relatedRequestId: req.id,
       suggestedAction:
         'Investigate backend performance, network latency, or blocking dependencies.',
@@ -114,7 +228,7 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
       req.responseBody?.size ??
       0;
 
-    if (requestSize >= LARGE_REQUEST_BYTES) {
+    if (requestSize >= getThresholds(req.resourceType).requestBytes) {
       findings.push({
         type: 'large_payload',
         description: `Large request payload (${Math.round(
@@ -122,12 +236,13 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
         )} KB) sent to ${req.url}`,
         severity: 'warning',
         relatedRequestId: req.id,
+        dedupeKey: 'large_payload:request',
         suggestedAction:
           'Reduce payload size or use pagination / batching.',
       });
     }
 
-    if (responseSize >= LARGE_RESPONSE_BYTES) {
+    if (responseSize >= getThresholds(req.resourceType).responseBytes) {
       findings.push({
         type: 'large_payload',
         description: `Large response payload (${Math.round(
@@ -135,6 +250,7 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
         )} KB) received from ${req.url}`,
         severity: 'warning',
         relatedRequestId: req.id,
+        dedupeKey: 'large_payload:response',
         suggestedAction:
           'Use pagination, field filtering, or compression.',
       });
@@ -142,6 +258,17 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
   });
 
   return findings;
+}
+
+function getThresholds(resourceType?: string) {
+  const key = (resourceType ?? '').toLowerCase();
+  const overrides = RESOURCE_THRESHOLDS[key] ?? {};
+  return {
+    requestBytes: overrides.requestBytes ?? LARGE_REQUEST_BYTES,
+    responseBytes: overrides.responseBytes ?? LARGE_RESPONSE_BYTES,
+    slowMs: overrides.slowMs ?? SLOW_REQUEST_MS,
+    verySlowMs: overrides.verySlowMs ?? VERY_SLOW_REQUEST_MS,
+  };
 }
 
 /* =========================
@@ -177,6 +304,7 @@ export function detectAuthRequestFailures(requests: HarRequest[]): Finding[] {
    CORS Issues
    ========================= */
 
+// TODO: Handle proxy/gateway origin rewrites and non-browser contexts.
 export function detectCorsIssues(requests: HarRequest[]): Finding[] {
   const findings: Finding[] = [];
 
@@ -186,6 +314,10 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
       req.responseHeaders['access-control-allow-origin'];
     const allowCredentials =
       req.responseHeaders['access-control-allow-credentials'];
+    const origin = req.headers['origin'];
+    const isCrossOrigin = origin
+      ? origin !== getRequestOrigin(req.url)
+      : false;
 
     if (isPreflight && req.status >= 400) {
       findings.push({
@@ -199,7 +331,12 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
       return;
     }
 
-    if (!isPreflight && req.headers['origin'] && !allowOrigin) {
+    if (
+      !isPreflight &&
+      isCrossOrigin &&
+      req.status >= 400 &&
+      !allowOrigin
+    ) {
       findings.push({
         type: 'cors_issue',
         description: `Missing CORS headers on response from ${req.url}`,
@@ -211,6 +348,7 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
     }
 
     if (
+      isCrossOrigin &&
       req.headers['authorization'] &&
       allowOrigin &&
       allowOrigin !== '*' &&
@@ -228,6 +366,14 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
   });
 
   return findings;
+}
+
+function getRequestOrigin(url: string) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
 }
 
 /* =========================

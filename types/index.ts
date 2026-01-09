@@ -126,8 +126,10 @@ export interface Finding {
   type: FindingType;
   description: string;
   severity: 'info' | 'warning' | 'critical';
+  confidence?: 'low' | 'medium' | 'high';
   relatedRequestId?: string;
   suggestedAction: string;
+  dedupeKey?: string;
 }
 
 /* =========================
