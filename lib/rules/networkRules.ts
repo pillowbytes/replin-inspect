@@ -13,6 +13,25 @@ const LARGE_RESPONSE_BYTES = 1 * 1024 * 1024;  // 1 MB
 const HIGH_DNS_MS = 200;
 const HIGH_SSL_MS = 500;
 
+const RESOURCE_THRESHOLDS: Record<
+  string,
+  {
+    requestBytes?: number;
+    responseBytes?: number;
+    slowMs?: number;
+    verySlowMs?: number;
+  }
+> = {
+  image: { responseBytes: 2 * 1024 * 1024, slowMs: 3000, verySlowMs: 7000 },
+  media: { responseBytes: 5 * 1024 * 1024, slowMs: 5000, verySlowMs: 10000 },
+  font: { responseBytes: 1.5 * 1024 * 1024, slowMs: 3000, verySlowMs: 7000 },
+  script: { responseBytes: 1.5 * 1024 * 1024, slowMs: 2500, verySlowMs: 6000 },
+  stylesheet: { responseBytes: 1.5 * 1024 * 1024, slowMs: 2500, verySlowMs: 6000 },
+  xhr: { responseBytes: 1 * 1024 * 1024, slowMs: 2000, verySlowMs: 5000 },
+  fetch: { responseBytes: 1 * 1024 * 1024, slowMs: 2000, verySlowMs: 5000 },
+  document: { responseBytes: 1 * 1024 * 1024, slowMs: 2000, verySlowMs: 5000 },
+};
+
 /* =========================
    Failed Requests
    ========================= */
@@ -146,12 +165,17 @@ function authKey(req: HarRequest) {
 
 export function detectSlowRequests(requests: HarRequest[]): Finding[] {
   return requests
-    .filter(req => req.duration >= SLOW_REQUEST_MS)
+    .filter(req => {
+      const { slowMs } = getThresholds(req.resourceType);
+      return req.duration >= slowMs;
+    })
     .map(req => ({
       type: 'slow_request',
       description: `Request to ${req.url} took ${req.duration} ms to complete`,
       severity:
-        req.duration >= VERY_SLOW_REQUEST_MS ? 'critical' : 'warning',
+        req.duration >= getThresholds(req.resourceType).verySlowMs
+          ? 'critical'
+          : 'warning',
       relatedRequestId: req.id,
       suggestedAction:
         'Investigate backend performance, network latency, or blocking dependencies.',
@@ -178,7 +202,7 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
       req.responseBody?.size ??
       0;
 
-    if (requestSize >= LARGE_REQUEST_BYTES) {
+    if (requestSize >= getThresholds(req.resourceType).requestBytes) {
       findings.push({
         type: 'large_payload',
         description: `Large request payload (${Math.round(
@@ -192,7 +216,7 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
       });
     }
 
-    if (responseSize >= LARGE_RESPONSE_BYTES) {
+    if (responseSize >= getThresholds(req.resourceType).responseBytes) {
       findings.push({
         type: 'large_payload',
         description: `Large response payload (${Math.round(
@@ -208,6 +232,17 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
   });
 
   return findings;
+}
+
+function getThresholds(resourceType?: string) {
+  const key = (resourceType ?? '').toLowerCase();
+  const overrides = RESOURCE_THRESHOLDS[key] ?? {};
+  return {
+    requestBytes: overrides.requestBytes ?? LARGE_REQUEST_BYTES,
+    responseBytes: overrides.responseBytes ?? LARGE_RESPONSE_BYTES,
+    slowMs: overrides.slowMs ?? SLOW_REQUEST_MS,
+    verySlowMs: overrides.verySlowMs ?? VERY_SLOW_REQUEST_MS,
+  };
 }
 
 /* =========================
