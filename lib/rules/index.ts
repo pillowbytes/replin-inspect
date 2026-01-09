@@ -68,7 +68,7 @@ function dedupeFindings(findings: Finding[]): Finding[] {
   const seen = new Set<string>();
 
   return findings.filter(f => {
-    const key = `${f.type}|${f.relatedRequestId ?? 'global'}`;
+    const key = `${f.dedupeKey ?? f.type}|${f.relatedRequestId ?? 'global'}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

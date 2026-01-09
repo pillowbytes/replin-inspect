@@ -129,6 +129,7 @@ export interface Finding {
   confidence?: 'low' | 'medium' | 'high';
   relatedRequestId?: string;
   suggestedAction: string;
+  dedupeKey?: string;
 }
 
 /* =========================

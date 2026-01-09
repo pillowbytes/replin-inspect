@@ -186,6 +186,7 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
         )} KB) sent to ${req.url}`,
         severity: 'warning',
         relatedRequestId: req.id,
+        dedupeKey: 'large_payload:request',
         suggestedAction:
           'Reduce payload size or use pagination / batching.',
       });
@@ -199,6 +200,7 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
         )} KB) received from ${req.url}`,
         severity: 'warning',
         relatedRequestId: req.id,
+        dedupeKey: 'large_payload:response',
         suggestedAction:
           'Use pagination, field filtering, or compression.',
       });
