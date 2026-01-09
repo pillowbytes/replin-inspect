@@ -250,6 +250,10 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
       req.responseHeaders['access-control-allow-origin'];
     const allowCredentials =
       req.responseHeaders['access-control-allow-credentials'];
+    const origin = req.headers['origin'];
+    const isCrossOrigin = origin
+      ? origin !== getRequestOrigin(req.url)
+      : false;
 
     if (isPreflight && req.status >= 400) {
       findings.push({
@@ -263,7 +267,12 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
       return;
     }
 
-    if (!isPreflight && req.headers['origin'] && !allowOrigin) {
+    if (
+      !isPreflight &&
+      isCrossOrigin &&
+      req.status >= 400 &&
+      !allowOrigin
+    ) {
       findings.push({
         type: 'cors_issue',
         description: `Missing CORS headers on response from ${req.url}`,
@@ -275,6 +284,7 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
     }
 
     if (
+      isCrossOrigin &&
       req.headers['authorization'] &&
       allowOrigin &&
       allowOrigin !== '*' &&
@@ -292,6 +302,14 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
   });
 
   return findings;
+}
+
+function getRequestOrigin(url: string) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
 }
 
 /* =========================
