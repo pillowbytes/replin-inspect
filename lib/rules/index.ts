@@ -34,10 +34,30 @@ export function runAllRules(
   ];
 
   if (token) {
-    findings.push(...detectTokenIssues(token));
+    findings.push(...attachTokenFindings(requests, token));
   }
 
   return dedupeFindings(findings);
+}
+
+function attachTokenFindings(
+  requests: HarRequest[],
+  token: TokenInfo
+): Finding[] {
+  const tokenFindings = detectTokenIssues(token);
+  if (tokenFindings.length === 0) return [];
+
+  const authRequests = requests.filter(
+    (r) => Boolean(r.headers['authorization'])
+  );
+  if (authRequests.length === 0) return [];
+
+  return authRequests.flatMap((req) =>
+    tokenFindings.map((f) => ({
+      ...f,
+      relatedRequestId: req.id,
+    }))
+  );
 }
 
 /* =========================
