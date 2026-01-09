@@ -62,6 +62,7 @@ function attachTokenFindings(
   return authRequests.flatMap((req) => {
     const authHeader = req.headers['authorization'] ?? '';
     const headerToken = extractBearerToken(authHeader);
+    if (!headerToken) return [];
 
     if (tokenValue && headerToken && headerToken !== tokenValue) {
       return [];
@@ -86,7 +87,15 @@ function attachTokenFindings(
 
 function normalizeSeverity(finding: Finding, req?: HarRequest): Finding {
   if (!req) return finding;
+  const criticalTypes = new Set([
+    'failed_request',
+    'auth_request_failed',
+    'auth_forbidden',
+    'cors_preflight_failed',
+  ]);
+
   if (req.status >= 500 && finding.severity === 'warning') {
+    if (!criticalTypes.has(finding.type)) return finding;
     return { ...finding, severity: 'critical' };
   }
   if (req.status >= 400 && finding.severity === 'info') {

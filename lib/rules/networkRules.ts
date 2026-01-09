@@ -90,6 +90,16 @@ export function detectMissingHeaders(
     .map(req => {
       if (req.headers[lower]) return null;
 
+      if (lower !== 'authorization') {
+        return {
+          type: 'missing_header',
+          description: `Missing ${headerName} header on request to ${req.url}`,
+          severity: 'info',
+          relatedRequestId: req.id,
+          suggestedAction: `Ensure the ${headerName} header is set on the client.`,
+        } as Finding;
+      }
+
       const confidence = authRequired[req.id];
       if (!confidence) return null;
 
