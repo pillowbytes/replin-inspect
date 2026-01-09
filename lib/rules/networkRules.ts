@@ -64,16 +64,80 @@ export function detectMissingHeaders(
   headerName: string
 ): Finding[] {
   const lower = headerName.toLowerCase();
+  const authRequired = buildAuthRequiredIndex(requests, lower);
 
   return requests
-    .filter(req => !req.headers[lower])
-    .map(req => ({
-      type: 'missing_header',
-      description: `Missing ${headerName} header on request to ${req.url}`,
-      severity: 'info',
-      relatedRequestId: req.id,
-      suggestedAction: `Ensure the ${headerName} header is set on the client.`,
-    }));
+    .filter(req => shouldCheckAuthHeader(req, lower))
+    .map(req => {
+      if (req.headers[lower]) return null;
+
+      const confidence = authRequired[req.id];
+      if (!confidence) return null;
+
+      const prefix =
+        confidence === 'high'
+          ? 'Missing auth header on a protected request'
+          : confidence === 'medium'
+          ? 'Likely missing auth header'
+          : 'Possible missing auth header';
+
+      return {
+        type: 'missing_header',
+        description: `${prefix} for ${req.url}`,
+        severity: confidence === 'high' ? 'warning' : 'info',
+        confidence,
+        relatedRequestId: req.id,
+        suggestedAction: `Ensure the ${headerName} header is set on the client.`,
+      } as Finding;
+    })
+    .filter((f): f is Finding => Boolean(f));
+}
+
+function shouldCheckAuthHeader(req: HarRequest, lowerHeader: string) {
+  if (lowerHeader !== 'authorization') return true;
+  const resource = (req.resourceType ?? '').toLowerCase();
+  if (['image', 'font', 'stylesheet', 'script', 'media'].includes(resource)) {
+    return false;
+  }
+  return true;
+}
+
+function buildAuthRequiredIndex(
+  requests: HarRequest[],
+  lowerHeader: string
+): Record<string, 'high' | 'medium' | 'low' | undefined> {
+  if (lowerHeader !== 'authorization') return {};
+
+  const authPaths = new Set<string>();
+  const map: Record<string, 'high' | 'medium' | 'low' | undefined> = {};
+
+  requests.forEach(req => {
+    if (req.headers[lowerHeader]) {
+      authPaths.add(authKey(req));
+    }
+  });
+
+  requests.forEach(req => {
+    const responseAuth =
+      req.status === 401 ||
+      req.status === 403 ||
+      Boolean(req.responseHeaders['www-authenticate']);
+
+    if (responseAuth) {
+      map[req.id] = 'high';
+      return;
+    }
+
+    if (authPaths.has(authKey(req))) {
+      map[req.id] = 'medium';
+    }
+  });
+
+  return map;
+}
+
+function authKey(req: HarRequest) {
+  return `${req.domain ?? ''}${req.path ?? ''}`;
 }
 
 /* =========================

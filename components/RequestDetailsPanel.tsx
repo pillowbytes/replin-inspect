@@ -353,6 +353,11 @@ function AnalysisTab({ findings }: { findings: Finding[] }) {
       {findings.map((f, i) => (
         <div key={i} className="border border-gray-200 rounded-md p-3">
           <div className="font-medium text-gray-900">{f.description}</div>
+          {f.confidence && (
+            <div className="text-[11px] text-gray-500 mt-1">
+              Confidence: {f.confidence}
+            </div>
+          )}
           <div className="text-xs text-gray-600 mt-1">{f.suggestedAction}</div>
         </div>
       ))}
