@@ -149,6 +149,11 @@ function buildAuthRequiredIndex(
 
     if (authPaths.has(authKey(req))) {
       map[req.id] = 'medium';
+      return;
+    }
+
+    if (isLikelyProtectedPath(req.path)) {
+      map[req.id] = 'low';
     }
   });
 
@@ -157,6 +162,17 @@ function buildAuthRequiredIndex(
 
 function authKey(req: HarRequest) {
   return `${req.domain ?? ''}${req.path ?? ''}`;
+}
+
+function isLikelyProtectedPath(path?: string) {
+  if (!path) return false;
+  return (
+    path.startsWith('/api') ||
+    path.startsWith('/user') ||
+    path.startsWith('/account') ||
+    path.startsWith('/profile') ||
+    path.startsWith('/admin')
+  );
 }
 
 /* =========================
@@ -278,6 +294,7 @@ export function detectAuthRequestFailures(requests: HarRequest[]): Finding[] {
    CORS Issues
    ========================= */
 
+// TODO: Handle proxy/gateway origin rewrites and non-browser contexts.
 export function detectCorsIssues(requests: HarRequest[]): Finding[] {
   const findings: Finding[] = [];
 
