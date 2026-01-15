@@ -8,8 +8,9 @@ import {
   ClockIcon,
   DocumentTextIcon,
   InformationCircleIcon,
-} from '@heroicons/react/20/solid';
-import { useMemo, useRef, useState } from 'react';
+} from '@heroicons/react/24/outline';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 /* ======================
    Types
@@ -44,55 +45,76 @@ export default function RequestDetailsPanel({
     }),
     [requestFindings],
   );
+  const tabs = useMemo(
+    () => [
+      { id: 'overview' as const, label: 'Overview', icon: InformationCircleIcon },
+      { id: 'request' as const, label: 'Request', icon: DocumentTextIcon },
+      { id: 'response' as const, label: 'Response', icon: ArrowDownTrayIcon },
+      { id: 'timing' as const, label: 'Timing', icon: ClockIcon },
+    ],
+    [],
+  );
+  const activeTab = tabs.find((item) => item.id === tab) ?? tabs[0];
 
   return (
-    <div className="h-full flex flex-col border border-gray-200 rounded-xl overflow-hidden bg-white">
-      {/* Tabs */}
-      <div
-        className={`flex border-b border-gray-200 text-sm ${
-          isAtTop ? '' : 'shadow-sm'
-        } ${topBump ? '-translate-y-0.5 scale-y-105' : ''} origin-top transition-transform`}
-      >
-        <TabButton icon={InformationCircleIcon} label="Overview" active={tab === 'overview'} onClick={() => setTab('overview')} />
-        <TabButton icon={DocumentTextIcon} label="Request" active={tab === 'request'} onClick={() => setTab('request')} />
-        <TabButton icon={ArrowDownTrayIcon} label="Response" active={tab === 'response'} onClick={() => setTab('response')} />
-        <TabButton icon={ClockIcon} label="Timing" active={tab === 'timing'} onClick={() => setTab('timing')} />
+    <div className="h-full flex border border-gray-200 rounded-xl overflow-hidden bg-white">
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div
+          className={`h-10 px-4 border-b border-gray-200 text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center ${
+            isAtTop ? '' : 'shadow-sm'
+          } ${topBump ? '-translate-y-0.5 scale-y-105' : ''} origin-top transition-transform`}
+        >
+          {activeTab.label}
+        </div>
+
+        {/* Content */}
+        <div
+          ref={scrollRef}
+          onScroll={() => {
+            const top = scrollRef.current?.scrollTop ?? 0;
+            setIsAtTop(top <= 0);
+          }}
+          onWheel={(e) => {
+            const top = scrollRef.current?.scrollTop ?? 0;
+            if (top <= 0 && e.deltaY < 0) {
+              setTopBump(true);
+              if (bumpTimerRef.current) {
+                window.clearTimeout(bumpTimerRef.current);
+              }
+              bumpTimerRef.current = window.setTimeout(
+                () => setTopBump(false),
+                160,
+              );
+            }
+          }}
+          className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6 text-sm"
+        >
+          {tab === 'overview' && (
+            <OverviewTab request={request} findings={requestFindings} />
+          )}
+          {tab === 'request' && (
+            <RequestTab request={request} findings={findingsByContext.request} />
+          )}
+          {tab === 'response' && (
+            <ResponseTab request={request} findings={findingsByContext.response} />
+          )}
+          {tab === 'timing' && (
+            <TimingTab request={request} findings={findingsByContext.timing} />
+          )}
+        </div>
       </div>
 
-      {/* Content */}
-      <div
-        ref={scrollRef}
-        onScroll={() => {
-          const top = scrollRef.current?.scrollTop ?? 0;
-          setIsAtTop(top <= 0);
-        }}
-        onWheel={(e) => {
-          const top = scrollRef.current?.scrollTop ?? 0;
-          if (top <= 0 && e.deltaY < 0) {
-            setTopBump(true);
-            if (bumpTimerRef.current) {
-              window.clearTimeout(bumpTimerRef.current);
-            }
-            bumpTimerRef.current = window.setTimeout(
-              () => setTopBump(false),
-              160,
-            );
-          }
-        }}
-        className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6 text-sm"
-      >
-        {tab === 'overview' && (
-          <OverviewTab request={request} findings={requestFindings} />
-        )}
-        {tab === 'request' && (
-          <RequestTab request={request} findings={findingsByContext.request} />
-        )}
-        {tab === 'response' && (
-          <ResponseTab request={request} findings={findingsByContext.response} />
-        )}
-        {tab === 'timing' && (
-          <TimingTab request={request} findings={findingsByContext.timing} />
-        )}
+      <div className="flex w-10 flex-col items-center gap-2 border-l border-gray-200 bg-gray-50/60 pt-1 pb-3">
+        {tabs.map((item) => (
+          <TabRailButton
+            key={item.id}
+            active={tab === item.id}
+            onClick={() => setTab(item.id)}
+            icon={item.icon}
+            label={item.label}
+            side="right"
+          />
+        ))}
       </div>
     </div>
   );
@@ -556,30 +578,43 @@ function EmptyState({ text }: { text: string }) {
   return <div className="text-sm text-gray-500 py-6 text-center">{text}</div>;
 }
 
-function TabButton({
+function TabRailButton({
   active,
   onClick,
   icon: Icon,
   label,
+  side = 'left',
 }: {
   active: boolean;
   onClick: () => void;
   icon: any;
   label: string;
+  side?: 'left' | 'right';
 }) {
-  return (
+  const button = (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1 px-3 py-2 border-b-2 ${
+      aria-label={label}
+      className={`relative flex h-8 w-8 items-center justify-center transition ${
         active
-          ? 'border-blue-600 text-blue-600'
-          : 'border-transparent text-gray-600 hover:text-gray-900'
+          ? 'text-blue-600'
+          : 'text-gray-500 hover:text-gray-900'
       }`}
     >
-      <Icon className="h-4 w-4" />
-      {label}
+      <Icon className="h-5 w-5" />
+      {active && (
+        <span
+          className={`absolute top-1/2 h-6 w-1 -translate-y-1/2 bg-blue-600 ${
+            side === 'right'
+              ? 'left-0 rounded-r-full'
+              : 'right-0 rounded-l-full'
+          }`}
+        />
+      )}
     </button>
   );
+
+  return <Tooltip label={label}>{button}</Tooltip>;
 }
 
 /* ======================
@@ -607,6 +642,63 @@ function formatBytes(bytes?: number) {
   if (!bytes || bytes <= 0) return '—';
   if (bytes > 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
   return `${Math.round(bytes / 1024)} KB`;
+}
+
+function Tooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  const updatePosition = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPos({
+      left: rect.left + rect.width / 2,
+      top: rect.top,
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = () => updatePosition();
+    window.addEventListener('scroll', handle, true);
+    window.addEventListener('resize', handle);
+    return () => {
+      window.removeEventListener('scroll', handle, true);
+      window.removeEventListener('resize', handle);
+    };
+  }, [open]);
+
+  return (
+    <span
+      ref={triggerRef}
+      className="inline-flex"
+      onMouseEnter={() => {
+        updatePosition();
+        setOpen(true);
+      }}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {children}
+      {open &&
+        pos &&
+        createPortal(
+          <span
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 shadow-sm"
+            style={{ left: pos.left, top: pos.top - 8 }}
+          >
+            {label}
+          </span>,
+          document.body
+        )}
+    </span>
+  );
 }
 
 function sortFindings(findings: Finding[]) {

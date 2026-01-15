@@ -177,7 +177,7 @@ export default function HomePage() {
           <>
             {/* Summary strip */}
             {/* Command center layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(720px,1fr)_320px] lg:grid-rows-[minmax(0,1fr)] gap-6 flex-1 min-h-0 h-full w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(720px,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] gap-6 flex-1 min-h-0 h-full w-full">
               <aside className="space-y-4 lg:overflow-y-auto lg:pr-2 pb-2">
                 <FiltersPanel
                   selectedMethods={selectedMethods}
