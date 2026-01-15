@@ -357,7 +357,7 @@ const TIMING_COLORS: Record<keyof HarTimings, string> = {
   receive: 'bg-emerald-500',
 };
 
-const MIN_BAR_MS = 2;
+const MIN_BAR_MS = 1;
 
 function TimingTab({
   request,
@@ -383,14 +383,20 @@ function TimingTab({
   return (
     <Section title="Timing breakdown">
       <FindingsBlock findings={findings} />
-      <div className="h-3 w-full rounded-full overflow-hidden bg-gray-100 flex">
-        {barItems.map((t) => (
-          <div
-            key={t.key}
-            className={TIMING_COLORS[t.key]}
-            style={{ width: `${(t.value / total) * 100}%` }}
-          />
-        ))}
+      <div className="h-4 w-full rounded-sm overflow-hidden bg-gray-100 flex">
+        {barItems.map((t) => {
+          const label = `${t.key} (${t.value} ms)`;
+          return (
+            <Tooltip
+              key={t.key}
+              label={label}
+              className={`block h-full ${TIMING_COLORS[t.key]}`}
+              style={{ width: `${(t.value / total) * 100}%` }}
+            >
+              <span className="sr-only">{label}</span>
+            </Tooltip>
+          );
+        })}
       </div>
 
       <div className="space-y-2">
@@ -645,9 +651,13 @@ function formatBytes(bytes?: number) {
 function Tooltip({
   label,
   children,
+  className,
+  style,
 }: {
   label: string;
   children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLSpanElement | null>(null);
@@ -676,7 +686,8 @@ function Tooltip({
   return (
     <span
       ref={triggerRef}
-      className="inline-flex"
+      className={`inline-flex ${className ?? ''}`}
+      style={style}
       onMouseEnter={() => {
         updatePosition();
         setOpen(true);
