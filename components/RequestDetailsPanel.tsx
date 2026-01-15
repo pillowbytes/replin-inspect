@@ -137,7 +137,7 @@ function OverviewTab({
       <KeyValue
         label="Method"
         value={request.method}
-        className={getMethodStyle(request.method).text}
+        className={`font-method ${getMethodStyle(request.method).text}`}
       />
       <KeyValue
         label="Status"
@@ -175,7 +175,7 @@ function RequestTab({
         <KeyValue
           label="Method"
           value={request.method}
-          className={getMethodStyle(request.method).text}
+          className={`font-method ${getMethodStyle(request.method).text}`}
         />
         <KeyValue label="Path" value={request.path ?? '—'} wrap />
       </Section>
@@ -531,9 +531,11 @@ function FindingsBlock({
                 </span>
               )}
             </div>
-            <div className="mt-2 text-sm text-gray-900">{f.description}</div>
-            <div className="mt-1 text-xs text-gray-600">
-              {f.suggestedAction}
+            <div className="mt-2 text-sm text-gray-800 break-words">
+              {formatFindingText(f.description)}
+            </div>
+            <div className="mt-1 text-xs font-semibold text-gray-600 break-words">
+              {formatFindingText(f.suggestedAction)}
             </div>
           </div>
         ))}
@@ -770,4 +772,18 @@ function severityCard(severity: Finding['severity']) {
   if (severity === 'critical') return 'bg-red-50';
   if (severity === 'warning') return 'bg-amber-50';
   return 'bg-gray-50';
+}
+
+function formatFindingText(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s]+|wss?:\/\/[^\s]+)/g);
+  return parts.map((part, index) => {
+    if (part.match(/^(https?:\/\/|wss?:\/\/)/)) {
+      return (
+        <span key={index} className="text-xs text-gray-600 break-all">
+          {part}
+        </span>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
 }

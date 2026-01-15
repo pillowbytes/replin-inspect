@@ -22,5 +22,15 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+.font-method {
+  font-family: var(--font-fira-code);
+  font-variant-ligatures: none;
 }

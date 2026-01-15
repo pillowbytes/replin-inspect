@@ -372,7 +372,7 @@ export default function ResultsTable({
               {/* Request info */}
               <div className="space-y-1 overflow-hidden">
                 <div className="truncate text-sm font-medium">
-                  <span className={`font-mono mr-2 ${getMethodStyle(req.method).text}`}>
+                  <span className={`font-method mr-2 ${getMethodStyle(req.method).text}`}>
                     {req.method}
                   </span>
                   {req.url}

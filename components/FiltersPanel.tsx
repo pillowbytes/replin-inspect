@@ -236,7 +236,7 @@ function FilterChip({
 
   return (
     <div
-      className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs ${styles.border} ${styles.bg} ${styles.text}`}
+      className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${styles.border} ${styles.bg} ${styles.text}`}
     >
       <span className="truncate max-w-[150px] font-semibold">{label}</span>
       <button onClick={onRemove} className="text-current/70 hover:text-current">

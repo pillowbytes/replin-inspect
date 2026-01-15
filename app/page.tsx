@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import UploadArea from '@/components/UploadArea';
 import TokenInspector from '@/components/TokenInspector';
@@ -18,6 +19,7 @@ import {
   GlobeAltIcon,
   KeyIcon,
   FolderPlusIcon,
+  BugAntIcon,
 } from '@heroicons/react/20/solid';
 import {
   ShieldCheckIcon,
@@ -125,7 +127,7 @@ export default function HomePage() {
     >
       <header className="w-full border-b border-gray-200">
         <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <Square3Stack3DIcon className="h-6 w-6 text-gray-900" />
             <div>
               <div className="text-lg font-semibold">Replin Inspect</div>
@@ -133,17 +135,17 @@ export default function HomePage() {
                 Client-side troubleshooting tools
               </div>
             </div>
-          </div>
+          </Link>
 
-          {analysisStarted && (
-            <button
-              onClick={handleNewAnalysis}
-              className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              <FolderPlusIcon className="h-4 w-4" />
-              New analysis
-            </button>
-          )}
+          <a
+            href="https://github.com/pillowbytes/replin-inspect/issues"
+            className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <BugAntIcon className="h-4 w-4" />
+            Report issue
+          </a>
         </div>
       </header>
 
@@ -152,31 +154,43 @@ export default function HomePage() {
           analysisStarted ? 'overflow-hidden flex flex-col gap-6' : 'space-y-8'
         }`}
       >
-        <nav>
-          <div className="inline-flex rounded-lg bg-gray-100 p-1 text-sm">
-            <button
-              onClick={() => setMode('network')}
-              className={`px-3 py-1.5 rounded-md ${
-                mode === 'network'
-                  ? 'bg-white border border-gray-200'
-                  : 'text-gray-600'
-              }`}
-            >
-              <GlobeAltIcon className="h-4 w-4 inline mr-1" />
-              Network
-            </button>
-            <Tooltip label="Token analysis is not available yet.">
+        <nav className="relative border-b border-gray-200 pb-0 mb-6">
+          <div className="flex items-center justify-center">
+            <div className="inline-flex rounded-t-lg rounded-b-none bg-gray-100 p-1 text-sm">
               <button
-                onClick={() => setMode('token')}
-                disabled
-                aria-disabled="true"
-                className="px-3 py-1.5 rounded-md text-gray-400 cursor-not-allowed"
+                onClick={() => setMode('network')}
+                className={`px-3 py-1.5 rounded-md ${
+                  mode === 'network'
+                    ? 'bg-white border border-gray-200'
+                    : 'text-gray-600'
+                }`}
               >
-                <KeyIcon className="h-4 w-4 inline mr-1" />
-                Token
+                <GlobeAltIcon className="h-4 w-4 inline mr-1" />
+                Network
               </button>
-            </Tooltip>
+              <Tooltip label="Token analysis is not available yet.">
+                <button
+                  onClick={() => setMode('token')}
+                  disabled
+                  aria-disabled="true"
+                  className="px-3 py-1.5 rounded-md text-gray-400 cursor-not-allowed"
+                >
+                  <KeyIcon className="h-4 w-4 inline mr-1" />
+                  Token
+                </button>
+              </Tooltip>
+            </div>
           </div>
+
+          {analysisStarted && (
+            <button
+              onClick={handleNewAnalysis}
+              className="absolute left-0 top-0 flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              <FolderPlusIcon className="h-4 w-4" />
+              New analysis
+            </button>
+          )}
         </nav>
 
         {!analysisStarted ? (
@@ -206,6 +220,18 @@ export default function HomePage() {
                       </div>
                       <span>This tool currently uses no cookies.</span>
                     </div>
+                  </div>
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    This app is still in development. Found an issue? Report it on{' '}
+                    <a
+                      href="https://github.com/pillowbytes/replin-inspect/issues"
+                      className="font-semibold underline underline-offset-2"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      GitHub
+                    </a>
+                    .
                   </div>
                 </div>
                 <div className="border border-gray-200 rounded-xl p-6 bg-gray-50">
@@ -401,13 +427,16 @@ export default function HomePage() {
                       </span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setShowFindings(true)}
-                    disabled={findingsSummary.total === 0}
-                    className="mt-4 w-full text-sm px-3 py-2 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    Open findings
-                  </button>
+                  <Tooltip label="Full findings details are not available yet.">
+                    <button
+                      onClick={() => setShowFindings(true)}
+                      disabled
+                      aria-disabled="true"
+                      className="mt-4 w-full text-sm px-3 py-2 border border-gray-200 rounded-md text-gray-400 cursor-not-allowed"
+                    >
+                      Open findings
+                    </button>
+                  </Tooltip>
                 </div>
               </aside>
 
@@ -530,7 +559,7 @@ function SummaryPill({
   onClick: () => void;
 }) {
   const base =
-    'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium';
+    'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 font-medium';
   const toneClass =
     tone === 'danger'
       ? 'border-red-200 bg-red-50 text-red-700'
