@@ -121,6 +121,7 @@ export const FindingTypes = {
 } as const;
 
 export type FindingType = typeof FindingTypes[keyof typeof FindingTypes];
+export type FindingContext = 'overview' | 'request' | 'response' | 'timing';
 
 export interface Finding {
   type: FindingType;
@@ -130,6 +131,7 @@ export interface Finding {
   relatedRequestId?: string;
   suggestedAction: string;
   dedupeKey?: string;
+  context?: FindingContext;
 }
 
 /* =========================

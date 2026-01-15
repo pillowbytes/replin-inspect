@@ -4,7 +4,6 @@ import { Finding, HarRequest, HarTimings } from '@/types';
 import { getMethodStyle, getStatusText } from '@/lib/utils/filterStyles';
 import {
   ArrowDownTrayIcon,
-  BeakerIcon,
   ChevronDownIcon,
   ClockIcon,
   DocumentTextIcon,
@@ -16,7 +15,7 @@ import { useMemo, useRef, useState } from 'react';
    Types
    ====================== */
 
-type Tab = 'overview' | 'request' | 'response' | 'timing' | 'analysis';
+type Tab = 'overview' | 'request' | 'response' | 'timing';
 
 interface RequestDetailsPanelProps {
   request: HarRequest;
@@ -36,6 +35,15 @@ export default function RequestDetailsPanel({
   const [topBump, setTopBump] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const bumpTimerRef = useRef<number | null>(null);
+  const requestFindings = useMemo(() => findings ?? [], [findings]);
+  const findingsByContext = useMemo(
+    () => ({
+      request: requestFindings.filter((f) => f.context === 'request'),
+      response: requestFindings.filter((f) => f.context === 'response'),
+      timing: requestFindings.filter((f) => f.context === 'timing'),
+    }),
+    [requestFindings],
+  );
 
   return (
     <div className="h-full flex flex-col border border-gray-200 rounded-xl overflow-hidden bg-white">
@@ -49,7 +57,6 @@ export default function RequestDetailsPanel({
         <TabButton icon={DocumentTextIcon} label="Request" active={tab === 'request'} onClick={() => setTab('request')} />
         <TabButton icon={ArrowDownTrayIcon} label="Response" active={tab === 'response'} onClick={() => setTab('response')} />
         <TabButton icon={ClockIcon} label="Timing" active={tab === 'timing'} onClick={() => setTab('timing')} />
-        <TabButton icon={BeakerIcon} label="Analysis" active={tab === 'analysis'} onClick={() => setTab('analysis')} />
       </div>
 
       {/* Content */}
@@ -74,11 +81,18 @@ export default function RequestDetailsPanel({
         }}
         className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6 text-sm"
       >
-        {tab === 'overview' && <OverviewTab request={request} />}
-        {tab === 'request' && <RequestTab request={request} />}
-        {tab === 'response' && <ResponseTab request={request} />}
-        {tab === 'timing' && <TimingTab request={request} />}
-        {tab === 'analysis' && <AnalysisTab findings={findings} />}
+        {tab === 'overview' && (
+          <OverviewTab request={request} findings={requestFindings} />
+        )}
+        {tab === 'request' && (
+          <RequestTab request={request} findings={findingsByContext.request} />
+        )}
+        {tab === 'response' && (
+          <ResponseTab request={request} findings={findingsByContext.response} />
+        )}
+        {tab === 'timing' && (
+          <TimingTab request={request} findings={findingsByContext.timing} />
+        )}
       </div>
     </div>
   );
@@ -88,9 +102,16 @@ export default function RequestDetailsPanel({
    Overview
    ====================== */
 
-function OverviewTab({ request }: { request: HarRequest }) {
+function OverviewTab({
+  request,
+  findings,
+}: {
+  request: HarRequest;
+  findings: Finding[];
+}) {
   return (
     <Section title="Request summary">
+      <FindingsBlock title="Findings summary" findings={findings} showSummary />
       <KeyValue
         label="Method"
         value={request.method}
@@ -118,9 +139,16 @@ function OverviewTab({ request }: { request: HarRequest }) {
    Request tab
    ====================== */
 
-function RequestTab({ request }: { request: HarRequest }) {
+function RequestTab({
+  request,
+  findings,
+}: {
+  request: HarRequest;
+  findings: Finding[];
+}) {
   return (
     <>
+      <FindingsBlock title="Request findings" findings={findings} />
       <Section title="Request">
         <KeyValue
           label="Method"
@@ -151,9 +179,16 @@ function RequestTab({ request }: { request: HarRequest }) {
    Response tab
    ====================== */
 
-function ResponseTab({ request }: { request: HarRequest }) {
+function ResponseTab({
+  request,
+  findings,
+}: {
+  request: HarRequest;
+  findings: Finding[];
+}) {
   return (
     <>
+      <FindingsBlock title="Response findings" findings={findings} />
       <Section title="Response">
         <KeyValue
           label="Status"
@@ -302,18 +337,30 @@ const TIMING_COLORS: Record<keyof HarTimings, string> = {
 
 const MIN_BAR_MS = 2;
 
-function TimingTab({ request }: { request: HarRequest }) {
+function TimingTab({
+  request,
+  findings,
+}: {
+  request: HarRequest;
+  findings: Finding[];
+}) {
   const items = useMemo(() => normalizeTimings(request.timings), [request.timings]);
   const total = items.reduce((s, t) => s + t.value, 0);
 
   if (!items.length || total === 0) {
-    return <EmptyState text="No timing data available." />;
+    return (
+      <Section title="Timing breakdown">
+        <FindingsBlock title="Timing findings" findings={findings} />
+        <EmptyState text="No timing data available." />
+      </Section>
+    );
   }
 
   const barItems = items.filter((t) => t.value >= MIN_BAR_MS);
 
   return (
     <Section title="Timing breakdown">
+      <FindingsBlock title="Timing findings" findings={findings} />
       <div className="h-3 w-full rounded-full overflow-hidden bg-gray-100 flex">
         {barItems.map((t) => (
           <div
@@ -335,32 +382,6 @@ function TimingTab({ request }: { request: HarRequest }) {
           </div>
         ))}
       </div>
-    </Section>
-  );
-}
-
-/* ======================
-   Analysis
-   ====================== */
-
-function AnalysisTab({ findings }: { findings: Finding[] }) {
-  if (!findings.length) {
-    return <EmptyState text="No findings for this request." />;
-  }
-
-  return (
-    <Section title="Findings">
-      {findings.map((f, i) => (
-        <div key={i} className="border border-gray-200 rounded-md p-3">
-          <div className="font-medium text-gray-900">{f.description}</div>
-          {f.confidence && (
-            <div className="text-[11px] text-gray-500 mt-1">
-              Confidence: {f.confidence}
-            </div>
-          )}
-          <div className="text-xs text-gray-600 mt-1">{f.suggestedAction}</div>
-        </div>
-      ))}
     </Section>
   );
 }
@@ -410,6 +431,100 @@ function KeyValue({
         {value}
       </div>
     </div>
+  );
+}
+
+function FindingsBlock({
+  title,
+  findings,
+  showSummary = false,
+}: {
+  title: string;
+  findings: Finding[];
+  showSummary?: boolean;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  if (!findings.length) return null;
+
+  const sorted = sortFindings(findings);
+  const important = sorted.filter((f) => f.severity !== 'info');
+  const info = sorted.filter((f) => f.severity === 'info');
+  const visible = showAll ? sorted : important;
+
+  const counts = {
+    critical: findings.filter((f) => f.severity === 'critical').length,
+    warning: findings.filter((f) => f.severity === 'warning').length,
+    info: findings.filter((f) => f.severity === 'info').length,
+  };
+
+  return (
+    <Section title={title}>
+      {showSummary && (
+        <div className="grid grid-cols-3 gap-2 text-[11px] text-gray-500">
+          <div className="rounded-md border border-gray-200 bg-white px-2 py-1">
+            <span className="font-semibold text-gray-900">
+              {counts.critical}
+            </span>{' '}
+            Critical
+          </div>
+          <div className="rounded-md border border-gray-200 bg-white px-2 py-1">
+            <span className="font-semibold text-gray-900">
+              {counts.warning}
+            </span>{' '}
+            Warnings
+          </div>
+          <div className="rounded-md border border-gray-200 bg-white px-2 py-1">
+            <span className="font-semibold text-gray-900">
+              {counts.info}
+            </span>{' '}
+            Info
+          </div>
+        </div>
+      )}
+
+      {visible.length === 0 && info.length > 0 && (
+        <div className="text-xs text-gray-500">
+          No critical or warning findings for this section.
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {visible.map((f, i) => (
+          <div
+            key={`${f.type}-${i}`}
+            className="border border-gray-200 rounded-md p-3 bg-white"
+          >
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 border ${severityStyles(f.severity)}`}
+              >
+                {f.severity}
+              </span>
+              {f.confidence && (
+                <span className="text-gray-400">
+                  Confidence: {f.confidence}
+                </span>
+              )}
+            </div>
+            <div className="mt-2 text-sm text-gray-900">{f.description}</div>
+            <div className="mt-1 text-xs text-gray-600">
+              {f.suggestedAction}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {info.length > 0 && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="text-xs text-gray-600 hover:text-gray-900"
+        >
+          {showAll
+            ? 'Hide info findings'
+            : `Show ${info.length} info finding${info.length > 1 ? 's' : ''}`}
+        </button>
+      )}
+    </Section>
   );
 }
 
@@ -492,4 +607,36 @@ function formatBytes(bytes?: number) {
   if (!bytes || bytes <= 0) return '—';
   if (bytes > 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
   return `${Math.round(bytes / 1024)} KB`;
+}
+
+function sortFindings(findings: Finding[]) {
+  const severityRank: Record<Finding['severity'], number> = {
+    critical: 0,
+    warning: 1,
+    info: 2,
+  };
+  const confidenceRank: Record<NonNullable<Finding['confidence']>, number> = {
+    high: 0,
+    medium: 1,
+    low: 2,
+  };
+
+  return [...findings].sort((a, b) => {
+    const severityDelta = severityRank[a.severity] - severityRank[b.severity];
+    if (severityDelta !== 0) return severityDelta;
+
+    const confA = a.confidence ? confidenceRank[a.confidence] : 3;
+    const confB = b.confidence ? confidenceRank[b.confidence] : 3;
+    return confA - confB;
+  });
+}
+
+function severityStyles(severity: Finding['severity']) {
+  if (severity === 'critical') {
+    return 'border-red-200 bg-red-50 text-red-700';
+  }
+  if (severity === 'warning') {
+    return 'border-amber-200 bg-amber-50 text-amber-700';
+  }
+  return 'border-gray-200 bg-gray-50 text-gray-600';
 }

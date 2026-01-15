@@ -43,6 +43,7 @@ export function detectFailedRequests(requests: HarRequest[]): Finding[] {
       type: 'failed_request',
       description: `Request to ${req.url} failed with status ${req.status}`,
       severity: req.status >= 500 ? 'critical' : 'warning',
+      context: 'response',
       relatedRequestId: req.id,
       suggestedAction: 'Check the backend service or endpoint for errors.',
     }));
@@ -64,6 +65,7 @@ export function detectRedirectLoops(requests: HarRequest[]): Finding[] {
           type: 'redirect_loop',
           description: `Possible redirect loop detected for ${req.url}`,
           severity: 'warning',
+          context: 'response',
           relatedRequestId: req.id,
           suggestedAction: 'Check redirect configuration or authentication flows.',
         });
@@ -95,6 +97,7 @@ export function detectMissingHeaders(
           type: 'missing_header',
           description: `Missing ${headerName} header on request to ${req.url}`,
           severity: 'info',
+          context: 'request',
           relatedRequestId: req.id,
           suggestedAction: `Ensure the ${headerName} header is set on the client.`,
         } as Finding;
@@ -115,6 +118,7 @@ export function detectMissingHeaders(
         description: `${prefix} for ${req.url}`,
         severity: confidence === 'high' ? 'warning' : 'info',
         confidence,
+        context: 'request',
         relatedRequestId: req.id,
         suggestedAction: `Ensure the ${headerName} header is set on the client.`,
       } as Finding;
@@ -202,6 +206,7 @@ export function detectSlowRequests(requests: HarRequest[]): Finding[] {
         req.duration >= getThresholds(req.resourceType).verySlowMs
           ? 'critical'
           : 'warning',
+      context: 'timing',
       relatedRequestId: req.id,
       suggestedAction:
         'Investigate backend performance, network latency, or blocking dependencies.',
@@ -235,6 +240,7 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
           requestSize / 1024
         )} KB) sent to ${req.url}`,
         severity: 'warning',
+        context: 'request',
         relatedRequestId: req.id,
         dedupeKey: 'large_payload:request',
         suggestedAction:
@@ -249,6 +255,7 @@ export function detectLargePayloads(requests: HarRequest[]): Finding[] {
           responseSize / 1024
         )} KB) received from ${req.url}`,
         severity: 'warning',
+        context: 'response',
         relatedRequestId: req.id,
         dedupeKey: 'large_payload:response',
         suggestedAction:
@@ -292,6 +299,7 @@ export function detectAuthRequestFailures(requests: HarRequest[]): Finding[] {
           ? `Request to ${req.url} was unauthorized despite credentials`
           : `Request to ${req.url} was forbidden despite credentials`,
       severity: 'warning',
+      context: 'response',
       relatedRequestId: req.id,
       suggestedAction:
         req.status === 401
@@ -324,6 +332,7 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
         type: 'cors_preflight_failed',
         description: `CORS preflight request to ${req.url} failed`,
         severity: 'critical',
+        context: 'response',
         relatedRequestId: req.id,
         suggestedAction:
           'Ensure OPTIONS requests are handled and CORS headers are returned.',
@@ -341,6 +350,7 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
         type: 'cors_issue',
         description: `Missing CORS headers on response from ${req.url}`,
         severity: 'warning',
+        context: 'response',
         relatedRequestId: req.id,
         suggestedAction:
           'Add Access-Control-Allow-Origin on the server.',
@@ -358,6 +368,7 @@ export function detectCorsIssues(requests: HarRequest[]): Finding[] {
         type: 'cors_issue',
         description: `CORS credentials not allowed for ${req.url}`,
         severity: 'warning',
+        context: 'response',
         relatedRequestId: req.id,
         suggestedAction:
           'Set Access-Control-Allow-Credentials: true and avoid wildcard origins.',
@@ -391,6 +402,7 @@ export function detectTimingAnomalies(
         type: 'dns_slow',
         description: `High DNS resolution time (${req.timings.dns} ms) for ${req.domain}`,
         severity: 'warning',
+        context: 'timing',
         relatedRequestId: req.id,
         suggestedAction:
           'Investigate DNS provider performance or caching.',
@@ -402,6 +414,7 @@ export function detectTimingAnomalies(
         type: 'ssl_slow',
         description: `Slow SSL handshake (${req.timings.ssl} ms) for ${req.domain}`,
         severity: 'warning',
+        context: 'timing',
         relatedRequestId: req.id,
         suggestedAction:
           'Check TLS configuration or certificate chain.',
