@@ -240,6 +240,17 @@ export default function ResultsTable({
     return () => window.removeEventListener('keydown', handler);
   }, [filtered, selectedRequestId, onSelectRequest]);
 
+  useEffect(() => {
+    if (!selectedRequestId) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    const el = container.querySelector(
+      `[data-request-id="${selectedRequestId}"]`
+    ) as HTMLElement | null;
+    if (!el) return;
+    el.scrollIntoView({ block: 'center' });
+  }, [selectedRequestId]);
+
   if (!requests.length) return null;
 
   return (
@@ -336,6 +347,7 @@ export default function ResultsTable({
           return (
             <div
               key={req.id}
+              data-request-id={req.id}
               tabIndex={0}
               aria-selected={selected}
               onClick={() => onSelectRequest?.(req.id)}
@@ -406,15 +418,16 @@ export default function ResultsTable({
               <div className="flex items-center gap-2">
                 {timingItems.length > 0 ? (
                   <>
-                    <div className="h-3 w-[70%] bg-gray-200 rounded-full flex overflow-visible">
+                    <div className="h-4 w-[70%] bg-gray-200 rounded-sm flex overflow-hidden">
                       {timingItems.map((t) => {
                         const label = `${t.key} (${t.value} ms)`;
+                        const width = Math.max(1, (t.value / timingTotal) * 100);
                         return (
                           <Tooltip
                             key={t.key}
                             label={label}
-                            className={`${TIMING_COLORS[t.key]} h-full first:rounded-l-full last:rounded-r-full`}
-                            style={{ width: `${(t.value / timingTotal) * 100}%` }}
+                            className={`${TIMING_COLORS[t.key]} h-full`}
+                            style={{ width: `${width}%` }}
                           >
                             <span className="sr-only">{label}</span>
                           </Tooltip>
@@ -427,7 +440,7 @@ export default function ResultsTable({
                   </>
                 ) : (
                   <div className="flex items-center justify-between w-full text-xs text-gray-400">
-                    <div className="h-3 w-[70%] rounded-full border border-dashed border-gray-300" />
+                    <div className="h-4 w-[70%] rounded-sm border border-dashed border-gray-300" />
                     <Tooltip label="Timing data not available in this HAR entry.">
                       <span className="ml-2 w-16 text-right">No timing</span>
                     </Tooltip>

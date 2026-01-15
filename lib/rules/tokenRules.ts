@@ -10,6 +10,7 @@ export function detectTokenIssues(token: TokenInfo): Finding[] {
         description: 'The provided token could not be parsed or is not a valid JWT.',
         severity: 'critical',
         confidence: 'high',
+        context: 'request',
         suggestedAction:
           'Ensure a valid JWT is provided by the client or authentication service.',
       },
@@ -22,6 +23,7 @@ export function detectTokenIssues(token: TokenInfo): Finding[] {
       description: 'The token has expired.',
       severity: 'warning',
       confidence: 'high',
+      context: 'request',
       suggestedAction: 'Renew the token or re-authenticate the user.',
     });
   }
@@ -32,6 +34,7 @@ export function detectTokenIssues(token: TokenInfo): Finding[] {
       description: 'The token does not specify an audience.',
       severity: 'warning',
       confidence: 'medium',
+      context: 'request',
       suggestedAction:
         'Ensure the token is issued for the correct API audience.',
     });
@@ -45,6 +48,7 @@ export function detectTokenIssues(token: TokenInfo): Finding[] {
       description: 'The token does not include any scopes.',
       severity: 'warning',
       confidence: 'medium',
+      context: 'request',
       suggestedAction:
         'Ensure the token includes required scopes.',
     });

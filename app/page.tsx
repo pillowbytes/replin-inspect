@@ -7,6 +7,7 @@ import ResultsTable from '@/components/ResultsTable';
 import RequestDetailsPanel from '@/components/RequestDetailsPanel';
 import AnalysisTile from '@/components/AnalysisTile';
 import FiltersPanel from '@/components/FiltersPanel';
+import FindingsView from '@/components/FindingsView';
 import { runAllRules } from '@/lib/rules';
 import { HarRequest, TokenInfo, Finding } from '@/types';
 
@@ -176,7 +177,7 @@ export default function HomePage() {
           <>
             {/* Summary strip */}
             {/* Command center layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_380px] gap-8 flex-1 min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(720px,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] gap-6 flex-1 min-h-0 h-full w-full">
               <aside className="space-y-4 lg:overflow-y-auto lg:pr-2 pb-2">
                 <FiltersPanel
                   selectedMethods={selectedMethods}
@@ -273,14 +274,19 @@ export default function HomePage() {
                 </div>
                 <div className="flex-1 min-h-0">
                   {showFindings ? (
-                    <AnalysisTile
-                      findings={findings}
-                      onSelectRequest={(id) => {
-                        setSelectedRequestId(id);
-                        setShowFindings(false);
-                      }}
-                      embedded
-                    />
+                    <div
+                      className="border border-gray-200 rounded-xl overflow-hidden flex-1 min-h-0"
+                    >
+                      <div className="h-full overflow-y-auto p-4">
+                        <FindingsView
+                          findings={findings}
+                          requests={requests}
+                          onSelectRequest={(id) => {
+                            setSelectedRequestId(id);
+                          }}
+                        />
+                      </div>
+                    </div>
                   ) : (
                     <ResultsTable
                       requests={requests}
