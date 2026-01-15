@@ -10,7 +10,12 @@ function base64UrlDecode(str: string): string {
 export function decodeJwt(token: string): TokenInfo {
   const parts = token.split('.');
   if (parts.length !== 3) {
-    return { raw: token, header: {}, payload: {}, valid: false, expired: false };
+    return {
+      token,
+      header: {},
+      payload: {},
+      error: 'Token must have 3 parts.',
+    };
   }
 
   try {
@@ -21,18 +26,20 @@ export function decodeJwt(token: string): TokenInfo {
     const exp = payload.exp ?? null;
     const nbf = payload.nbf ?? null;
 
-    const validTime =
-      (nbf === null || now >= nbf) &&
-      (exp === null || now <= exp);
-
     return {
-      raw: token,
+      token,
       header,
       payload,
-      valid: validTime,
-      expired: exp !== null && now > exp,
+      expiresAt: exp ? exp * 1000 : undefined,
+      isExpired: exp !== null && now > exp,
+      error: nbf !== null && now < nbf ? 'Token is not active yet.' : undefined,
     };
   } catch {
-    return { raw: token, header: {}, payload: {}, valid: false, expired: false };
+    return {
+      token,
+      header: {},
+      payload: {},
+      error: 'Token could not be parsed.',
+    };
   }
 }
