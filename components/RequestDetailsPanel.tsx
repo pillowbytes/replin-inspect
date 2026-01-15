@@ -133,7 +133,7 @@ function OverviewTab({
 }) {
   return (
     <Section title="Request summary">
-      <FindingsBlock title="Findings summary" findings={findings} showSummary />
+      <FindingsBlock findings={findings} showSummary />
       <KeyValue
         label="Method"
         value={request.method}
@@ -170,7 +170,7 @@ function RequestTab({
 }) {
   return (
     <>
-      <FindingsBlock title="Request findings" findings={findings} />
+      <FindingsBlock findings={findings} />
       <Section title="Request">
         <KeyValue
           label="Method"
@@ -210,7 +210,7 @@ function ResponseTab({
 }) {
   return (
     <>
-      <FindingsBlock title="Response findings" findings={findings} />
+      <FindingsBlock findings={findings} />
       <Section title="Response">
         <KeyValue
           label="Status"
@@ -372,7 +372,7 @@ function TimingTab({
   if (!items.length || total === 0) {
     return (
       <Section title="Timing breakdown">
-        <FindingsBlock title="Timing findings" findings={findings} />
+        <FindingsBlock findings={findings} />
         <EmptyState text="No timing data available." />
       </Section>
     );
@@ -382,7 +382,7 @@ function TimingTab({
 
   return (
     <Section title="Timing breakdown">
-      <FindingsBlock title="Timing findings" findings={findings} />
+      <FindingsBlock findings={findings} />
       <div className="h-3 w-full rounded-full overflow-hidden bg-gray-100 flex">
         {barItems.map((t) => (
           <div
@@ -457,11 +457,9 @@ function KeyValue({
 }
 
 function FindingsBlock({
-  title,
   findings,
   showSummary = false,
 }: {
-  title: string;
   findings: Finding[];
   showSummary?: boolean;
 }) {
@@ -472,6 +470,7 @@ function FindingsBlock({
   const important = sorted.filter((f) => f.severity !== 'info');
   const info = sorted.filter((f) => f.severity === 'info');
   const visible = showAll ? sorted : important;
+  const dominantSeverity = highestSeverity(findings);
 
   const counts = {
     critical: findings.filter((f) => f.severity === 'critical').length,
@@ -480,22 +479,22 @@ function FindingsBlock({
   };
 
   return (
-    <Section title={title}>
+    <div className="space-y-3">
       {showSummary && (
         <div className="grid grid-cols-3 gap-2 text-[11px] text-gray-500">
-          <div className="rounded-md border border-gray-200 bg-white px-2 py-1">
+          <div className={`rounded-md border ${summaryStyles('critical')} px-2 py-1`}>
             <span className="font-semibold text-gray-900">
               {counts.critical}
             </span>{' '}
             Critical
           </div>
-          <div className="rounded-md border border-gray-200 bg-white px-2 py-1">
+          <div className={`rounded-md border ${summaryStyles('warning')} px-2 py-1`}>
             <span className="font-semibold text-gray-900">
               {counts.warning}
             </span>{' '}
             Warnings
           </div>
-          <div className="rounded-md border border-gray-200 bg-white px-2 py-1">
+          <div className={`rounded-md border ${summaryStyles('info')} px-2 py-1`}>
             <span className="font-semibold text-gray-900">
               {counts.info}
             </span>{' '}
@@ -514,14 +513,12 @@ function FindingsBlock({
         {visible.map((f, i) => (
           <div
             key={`${f.type}-${i}`}
-            className="border border-gray-200 rounded-md p-3 bg-white"
+            className={`border border-gray-200 rounded-md p-3 ${severityCard(f.severity)} border-l-2 ${severityBorder(f.severity)}`}
           >
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 border ${severityStyles(f.severity)}`}
-              >
-                {f.severity}
-              </span>
+            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+              <Tooltip label={severityLabel(f.severity)}>
+                <span className={`h-2 w-2 rounded-full ${severityDot(f.severity)}`} />
+              </Tooltip>
               {f.confidence && (
                 <span className="text-gray-400">
                   Confidence: {f.confidence}
@@ -546,7 +543,8 @@ function FindingsBlock({
             : `Show ${info.length} info finding${info.length > 1 ? 's' : ''}`}
         </button>
       )}
-    </Section>
+      <div className="sr-only">{dominantSeverity}</div>
+    </div>
   );
 }
 
@@ -723,12 +721,42 @@ function sortFindings(findings: Finding[]) {
   });
 }
 
-function severityStyles(severity: Finding['severity']) {
-  if (severity === 'critical') {
-    return 'border-red-200 bg-red-50 text-red-700';
-  }
-  if (severity === 'warning') {
-    return 'border-amber-200 bg-amber-50 text-amber-700';
-  }
-  return 'border-gray-200 bg-gray-50 text-gray-600';
+function highestSeverity(findings: Finding[]) {
+  return findings.reduce((acc, f) => {
+    if (acc === 'critical') return acc;
+    if (f.severity === 'critical') return 'critical';
+    if (acc === 'warning') return acc;
+    if (f.severity === 'warning') return 'warning';
+    return 'info';
+  }, 'info' as Finding['severity']);
+}
+
+function severityDot(severity: Finding['severity']) {
+  if (severity === 'critical') return 'bg-red-500';
+  if (severity === 'warning') return 'bg-amber-500';
+  return 'bg-gray-300';
+}
+
+function severityBorder(severity: Finding['severity']) {
+  if (severity === 'critical') return 'border-l-red-500';
+  if (severity === 'warning') return 'border-l-amber-400';
+  return 'border-l-gray-300';
+}
+
+function summaryStyles(severity: Finding['severity']) {
+  if (severity === 'critical') return 'border-red-200 bg-red-50';
+  if (severity === 'warning') return 'border-amber-200 bg-amber-50';
+  return 'border-gray-200 bg-gray-50';
+}
+
+function severityLabel(severity: Finding['severity']) {
+  if (severity === 'critical') return 'Critical finding';
+  if (severity === 'warning') return 'Warning finding';
+  return 'Info finding';
+}
+
+function severityCard(severity: Finding['severity']) {
+  if (severity === 'critical') return 'bg-red-50';
+  if (severity === 'warning') return 'bg-amber-50';
+  return 'bg-gray-50';
 }

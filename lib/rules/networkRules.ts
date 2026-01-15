@@ -199,18 +199,28 @@ export function detectSlowRequests(requests: HarRequest[]): Finding[] {
       const { slowMs } = getThresholds(req.resourceType);
       return req.duration >= slowMs;
     })
-    .map(req => ({
-      type: 'slow_request',
-      description: `Request to ${req.url} took ${req.duration} ms to complete`,
-      severity:
-        req.duration >= getThresholds(req.resourceType).verySlowMs
-          ? 'critical'
-          : 'warning',
-      context: 'timing',
-      relatedRequestId: req.id,
-      suggestedAction:
-        'Investigate backend performance, network latency, or blocking dependencies.',
-    }));
+    .map(req => {
+      const { verySlowMs } = getThresholds(req.resourceType);
+      const severity = req.duration >= verySlowMs ? 'critical' : 'warning';
+      const dominant = pickDominantPhases(req);
+      const base = `Request took ${formatSeconds(req.duration)} to complete`;
+      const description =
+        dominant.length > 0
+          ? `${base}. Most time in ${formatPhaseSummary(dominant)}.`
+          : base;
+
+      return {
+        type: 'slow_request',
+        description,
+        severity,
+        context: 'timing',
+        relatedRequestId: req.id,
+        suggestedAction:
+          dominant.length > 0
+            ? actionForPhase(dominant[0].key)
+            : 'Review backend latency, network conditions, and blocking dependencies.',
+      };
+    });
 }
 
 /* =========================
@@ -276,6 +286,68 @@ function getThresholds(resourceType?: string) {
     slowMs: overrides.slowMs ?? SLOW_REQUEST_MS,
     verySlowMs: overrides.verySlowMs ?? VERY_SLOW_REQUEST_MS,
   };
+}
+
+function formatSeconds(ms: number) {
+  const secs = ms / 1000;
+  return `${secs.toFixed(secs >= 10 ? 0 : 1)}s`;
+}
+
+function pickDominantPhases(req: HarRequest) {
+  const timings = req.timings ?? {};
+  const entries = Object.entries(timings)
+    .map(([key, value]) => ({
+      key,
+      value: value != null && value >= 0 ? value : 0,
+    }))
+    .filter((entry) => entry.value > 0);
+
+  const total = entries.reduce((sum, entry) => sum + entry.value, 0);
+  if (total <= 0) return [];
+
+  const minShare = 0.45;
+  const minMs = 400;
+
+  const sorted = entries.sort((a, b) => b.value - a.value);
+  const dominant = sorted.filter(
+    (entry) => entry.value >= minMs && entry.value / total >= minShare
+  );
+
+  if (dominant.length > 0) return dominant;
+
+  const top = sorted[0];
+  if (top && top.value >= minMs * 2) {
+    return [top];
+  }
+
+  return [];
+}
+
+function formatPhaseSummary(
+  phases: { key: string; value: number }[],
+) {
+  return phases
+    .map((phase) => `${phase.key} (${formatSeconds(phase.value)})`)
+    .join(' + ');
+}
+
+function actionForPhase(phase: string) {
+  switch (phase) {
+    case 'wait':
+      return 'Likely server processing or queueing. Check backend latency and saturation.';
+    case 'receive':
+      return 'Response transfer is slow. Check response size and compression.';
+    case 'send':
+      return 'Request upload is slow. Check payload size and client upload bandwidth.';
+    case 'dns':
+      return 'DNS lookup is slow. Check resolver performance and caching.';
+    case 'ssl':
+      return 'TLS handshake is slow. Check certificate chain and handshake latency.';
+    case 'connect':
+      return 'Connection setup is slow. Check network path and connection limits.';
+    default:
+      return 'Review backend latency, network conditions, and blocking dependencies.';
+  }
 }
 
 /* =========================
