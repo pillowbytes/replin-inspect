@@ -85,11 +85,13 @@ export default function AnalysisTile({
     return (
       <div
         className={`${
-          embedded ? 'p-0 bg-transparent border-0' : 'border border-gray-200 rounded-xl p-4 bg-white'
+          embedded
+            ? 'p-0 bg-transparent border-0'
+            : 'border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-white dark:bg-neutral-900'
         } flex items-center gap-2`}
       >
-        <CheckCircleIcon className="h-5 w-5 text-emerald-500" />
-        <div className="text-sm text-gray-700">
+        <CheckCircleIcon className="h-5 w-5 text-emerald-500 dark:text-emerald-300" />
+        <div className="text-sm text-gray-700 dark:text-neutral-300">
           No issues detected in this analysis.
         </div>
       </div>
@@ -99,13 +101,15 @@ export default function AnalysisTile({
   return (
     <div
       className={`${
-        embedded ? 'p-0 bg-transparent border-0' : 'border border-gray-200 rounded-xl p-4 bg-white'
+        embedded
+          ? 'p-0 bg-transparent border-0'
+          : 'border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-white dark:bg-neutral-900'
       } space-y-4`}
     >
       {/* Header */}
       <div className="flex items-center gap-2">
-        <ExclamationTriangleIcon className="h-5 w-5 text-amber-500" />
-        <h2 className="text-sm font-semibold text-gray-900">
+        <ExclamationTriangleIcon className="h-5 w-5 text-amber-500 dark:text-amber-300" />
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
           Analysis summary
         </h2>
       </div>
@@ -142,7 +146,7 @@ export default function AnalysisTile({
                     {type.replace(/_/g, ' ')}
                   </span>
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 dark:text-neutral-400">
                   {totalCount} requests
                 </span>
               </button>
@@ -166,7 +170,7 @@ export default function AnalysisTile({
                               [urlKey]: !s[urlKey],
                             }))
                           }
-                          className="flex items-center justify-between w-full text-left text-sm text-gray-700 hover:text-gray-900"
+                          className="flex items-center justify-between w-full text-left text-sm text-gray-700 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-neutral-100"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <ChevronDownIcon
@@ -180,7 +184,7 @@ export default function AnalysisTile({
                               </span>
                             </Tooltip>
                           </div>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:text-neutral-400">
                             {allGroups.reduce((s, [, a]) => s + a.length, 0)}
                           </span>
                         </button>
@@ -196,21 +200,21 @@ export default function AnalysisTile({
                                   {/* Message header */}
                                   <div className="flex items-start justify-between text-sm">
                                     <div>
-                                      <div className="text-gray-900">
+                                      <div className="text-gray-900 dark:text-neutral-100">
                                         {msg}
                                       </div>
                                       {sample.confidence && (
-                                        <div className="text-[11px] text-gray-500">
+                                        <div className="text-[11px] text-gray-500 dark:text-neutral-400">
                                           Confidence: {sample.confidence}
                                         </div>
                                       )}
                                       {sample.suggestedAction && (
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs text-gray-500 dark:text-neutral-400">
                                           {sample.suggestedAction}
                                         </div>
                                       )}
                                     </div>
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-gray-500 dark:text-neutral-400">
                                       {items.length}
                                     </span>
                                   </div>
@@ -223,7 +227,7 @@ export default function AnalysisTile({
                                         [key]: !s[key],
                                       }))
                                     }
-                                    className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-gray-700"
+                                    className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200"
                                   >
                                     <CodeBracketIcon className="h-3 w-3" />
                                     {hiddenJson[key]
@@ -232,7 +236,7 @@ export default function AnalysisTile({
                                   </button>
 
                                   {!hiddenJson[key] && (
-                                    <pre className="bg-gray-50 border border-gray-200 rounded-md p-2 text-[11px] font-mono overflow-x-auto">
+                                    <pre className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-md p-2 text-[11px] font-mono overflow-x-auto text-gray-800 dark:text-neutral-200">
 {JSON.stringify(
   {
     type: sample.type,
@@ -255,7 +259,7 @@ export default function AnalysisTile({
                                           f.relatedRequestId &&
                                           onSelectRequest(f.relatedRequestId)
                                         }
-                                        className="block w-full text-left text-xs text-gray-700 hover:text-blue-600"
+                                        className="block w-full text-left text-xs text-gray-700 hover:text-blue-600 dark:text-neutral-300 dark:hover:text-blue-200"
                                       >
                                         <Tooltip label={f.description}>
                                           <span>{msg}</span>
@@ -279,7 +283,7 @@ export default function AnalysisTile({
                                           [urlKey]: visible + 5,
                                         }))
                                       }
-                                      className="text-blue-600 hover:underline"
+                                      className="text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
                                     >
                                       Show 5 more
                                     </button>
@@ -290,7 +294,7 @@ export default function AnalysisTile({
                                           [urlKey]: allGroups.length,
                                         }))
                                       }
-                                      className="text-blue-600 hover:underline"
+                                      className="text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
                                     >
                                       Show all
                                     </button>
@@ -305,7 +309,7 @@ export default function AnalysisTile({
                                         [urlKey]: 5,
                                       }))
                                     }
-                                    className="text-gray-600 hover:text-gray-900"
+                                    className="text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-neutral-100"
                                   >
                                     Show less
                                   </button>
@@ -373,7 +377,7 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 shadow-sm"
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-[10px] text-gray-700 dark:text-neutral-200 shadow-sm"
             style={{ left: pos.left, top: pos.top - 8 }}
           >
             {label}

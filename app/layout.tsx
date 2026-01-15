@@ -30,7 +30,7 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body
         // Apply font variables and common light‑mode styling here
-        className={`${geistSans.variable} ${geistMono.variable} ${firaCode.variable} antialiased bg-gray-50 text-gray-900`}
+        className={`${geistSans.variable} ${geistMono.variable} ${firaCode.variable} antialiased`}
       >
         {children}
       </body>
