@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Fira_Code } from 'next/font/google';
 import './globals.css';
 
 // Load Geist Sans and Mono and expose CSS variables
@@ -9,6 +9,10 @@ const geistSans = Geist({
 });
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
+  subsets: ['latin'],
+});
+const firaCode = Fira_Code({
+  variable: '--font-fira-code',
   subsets: ['latin'],
 });
 
@@ -26,7 +30,7 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body
         // Apply font variables and common light‑mode styling here
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900`}
+        className={`${geistSans.variable} ${geistMono.variable} ${firaCode.variable} antialiased bg-gray-50 text-gray-900`}
       >
         {children}
       </body>

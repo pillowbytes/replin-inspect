@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Replin Inspect
 
-## Getting Started
+Client‑side HAR inspection and troubleshooting for support engineers, SREs, and developers.
+Explain *why* a request failed or behaved unexpectedly without wading through raw HAR files.
 
-First, run the development server:
+**Status:** In active development  
+**Privacy:** Local‑only, runs entirely in the browser
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## At A Glance
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Request‑centric analysis with contextual findings
+- Progressive disclosure UI for fast scanning and deep dives
+- Privacy‑first: no uploads, no persistence
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Vision
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Build an opinionated diagnostic assistant that reduces HAR cognitive overload:
+- Surface the most important signals first.
+- Attach findings to specific requests whenever possible.
+- Provide clear, actionable explanations instead of raw data.
+- Keep the interface clean and use progressive disclosure for deep dives.
 
-## Learn More
+## What’s Implemented
 
-To learn more about Next.js, take a look at the following resources:
+- **Client‑side analysis:** HAR files are parsed locally in the browser.
+- **Request‑centric UI:** results table + request details panel + findings view.
+- **Findings engine:** rules for failures, auth, CORS, performance, payload size, and timing anomalies.
+- **Severity and confidence:** findings carry severity + confidence and are deduped.
+- **Timing attribution:** slow requests call out dominant phases when clear.
+- **Privacy‑first workflow:** no uploads, no persistence.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## In Progress / Planned
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Findings UX polish:** clearer grouping, richer evidence snippets, and more scannable layout.
+- **Token analysis:** deeper correlation and smarter authentication context.
+- **Findings summaries:** top causes and “why” explanations with supporting evidence.
+- **Rule expansion:** fewer false positives, more context‑aware messaging.
+- **Guided capture UX:** improved HAR capture guidance and onboarding.
 
-## Deploy on Vercel
+## What This Is Not
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Not a DevTools replacement.
+- Not a packet sniffer.
+- Not an AI black box.
+- Not a raw HAR dumper.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Privacy
+
+HAR data is processed locally in the browser and is never uploaded or stored by the app.
+
+## Issues / Feedback
+
+Please file bugs or feedback here:
+https://github.com/pillowbytes/replin-inspect/issues
+
+## Note on Self‑Hosting
+
+This repository is not intended as a self‑serve installation guide. If you are looking for a hosted version or want to try the app, please use the official deployment or open an issue.
+
+## How It Works
+
+1. Upload a HAR file (processed locally).
+2. Review request‑level findings and timing breakdowns.
+3. Drill into request details for evidence and context.
+
+## Roadmap (High‑Level)
+
+- Refine findings UX (layout, evidence, and summarization).
+- Improve auth/token correlation and messaging accuracy.
+- Expand timing attribution and performance insights.
+- Add richer capture guidance and onboarding.
