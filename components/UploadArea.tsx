@@ -56,7 +56,7 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
         <ArrowUpTrayIcon className="h-6 w-6 text-gray-700" />
 
         <div className="text-sm font-medium text-gray-900">
-          {isLoading ? 'Analyzing HAR file…' : 'Upload HAR file'}
+          {isLoading ? 'Analyzing HAR file…' : 'Start inspecting'}
         </div>
 
         <div className="text-xs text-gray-500">
