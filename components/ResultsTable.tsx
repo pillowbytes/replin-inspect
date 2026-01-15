@@ -60,7 +60,7 @@ function statusToClass(status: number): StatusClass {
 }
 
 function statusColor(status: number) {
-  if (status < 200) return 'text-gray-900';
+  if (status < 200) return 'text-gray-900 dark:text-neutral-200';
   return getStatusText(statusToClass(status));
 }
 
@@ -72,12 +72,12 @@ function durationBarColor(ms: number) {
 
 function durationTextStyle(ms: number) {
   if (ms >= VERY_SLOW_REQUEST_MS) {
-    return 'text-red-600 font-semibold';
+    return 'text-red-600 dark:text-red-300 font-semibold';
   }
   if (ms >= SLOW_REQUEST_MS) {
-    return 'text-amber-600 font-semibold';
+    return 'text-amber-600 dark:text-amber-300 font-semibold';
   }
-  return 'text-emerald-600';
+  return 'text-emerald-600 dark:text-emerald-300';
 }
 
 function sizeLabel(bytes?: number) {
@@ -92,7 +92,7 @@ const TIMING_COLORS: Record<
 > = {
   blocked: 'bg-gray-400',
   dns: 'bg-purple-500',
-  connect: 'bg-blue-500',
+  connect: 'bg-blue-400',
   ssl: 'bg-indigo-500',
   send: 'bg-slate-500',
   wait: 'bg-amber-500',
@@ -256,7 +256,7 @@ export default function ResultsTable({
   return (
     <div className="flex flex-col min-h-0 h-full gap-3" ref={containerRef}>
       {/* Rows */}
-      <div className="border border-gray-200 rounded-xl overflow-hidden flex-1 min-h-0">
+      <div className="border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden flex-1 min-h-0 bg-white dark:bg-neutral-900">
         <div
           ref={scrollRef}
           onScroll={() => {
@@ -276,10 +276,10 @@ export default function ResultsTable({
               );
             }
           }}
-          className="h-full overflow-y-auto overscroll-contain pb-2"
+          className="h-full overflow-y-auto overscroll-contain pb-2 no-scrollbar"
         >
           <div
-            className={`sticky top-0 z-10 bg-white border-b border-gray-200 grid grid-cols-[120px_1fr_240px] items-center px-3 py-2 text-xs text-gray-500 uppercase tracking-wide ${
+            className={`sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 grid grid-cols-[120px_1fr_240px] items-center px-3 py-2 text-xs text-gray-500 dark:text-neutral-400 uppercase tracking-wide ${
               isAtTop ? '' : 'shadow-sm'
             } ${topBump ? '-translate-y-0.5 scale-y-105' : ''} origin-top transition-transform`}
           >
@@ -290,7 +290,7 @@ export default function ResultsTable({
                   sortColumn === 'time' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'
                 );
               }}
-              className="flex items-center gap-1 text-left hover:text-gray-700"
+              className="flex items-center gap-1 text-left hover:text-gray-700 dark:hover:text-neutral-200"
             >
               <ClockIcon className="h-3 w-3" />
               Time
@@ -301,15 +301,15 @@ export default function ResultsTable({
                   <BarsArrowDownIcon className="h-3 w-3" />
                 ))}
             </button>
-            <div className="space-y-1">
-              <div>Request</div>
-              <div className="flex items-center gap-3 text-[10px] text-gray-400 normal-case tracking-normal">
-                <span>Status</span>
-                <span>Type</span>
-                <span>Size sent → recv</span>
-                <span>Findings</span>
+              <div className="space-y-1">
+                <div>Request</div>
+                <div className="flex items-center gap-3 text-[10px] text-gray-400 dark:text-neutral-500 normal-case tracking-normal">
+                  <span>Status</span>
+                  <span>Type</span>
+                  <span>Size sent → recv</span>
+                  <span>Findings</span>
+                </div>
               </div>
-            </div>
             <button
               onClick={() => {
                 setSortColumn('duration');
@@ -317,7 +317,7 @@ export default function ResultsTable({
                   sortColumn === 'duration' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'
                 );
               }}
-              className="flex items-center justify-end gap-1 text-right hover:text-gray-700"
+              className="flex items-center justify-end gap-1 text-right hover:text-gray-700 dark:hover:text-neutral-200"
             >
               Timing
               {sortColumn === 'duration' &&
@@ -357,28 +357,28 @@ export default function ResultsTable({
                   onSelectRequest?.(req.id);
                 }
               }}
-              className={`grid grid-cols-[120px_1fr_240px] items-center px-3 py-3 cursor-pointer hover:bg-gray-50 focus:outline-none ${
+              className={`grid grid-cols-[120px_1fr_240px] items-center px-3 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 focus:outline-none ${
                 selected
-                  ? 'bg-white ring-1 ring-slate-300 border-l-4 border-blue-500 shadow-sm'
+                  ? 'bg-gray-100 dark:bg-neutral-800 ring-1 ring-slate-300 dark:ring-neutral-700 border-l-4 border-blue-400 dark:border-neutral-300 shadow-sm'
                   : ''
               }`}
             >
               {/* Time */}
-              <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-400">
                 <ClockIcon className="h-3 w-3 shrink-0" />
                 <span>{formatTime(req.startTime)}</span>
               </div>
 
               {/* Request info */}
               <div className="space-y-1 overflow-hidden">
-                <div className="truncate text-sm font-medium">
+                <div className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">
                   <span className={`font-method mr-2 ${getMethodStyle(req.method).text}`}>
                     {req.method}
                   </span>
                   {req.url}
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-gray-600">
+                <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-neutral-300">
                   <Tooltip label="HTTP status code from the response.">
                     <span className={statusColor(req.status)}>
                       {req.status}
@@ -405,7 +405,7 @@ export default function ResultsTable({
 
                   {findings.length > 0 && (
                     <Tooltip label="Issues detected for this request.">
-                      <span className="flex items-center gap-1 text-amber-600">
+                      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-300">
                         <ExclamationTriangleIcon className="h-3 w-3" />
                         {findings.length}
                       </span>
@@ -418,7 +418,7 @@ export default function ResultsTable({
               <div className="flex items-center gap-2">
                 {timingItems.length > 0 ? (
                   <>
-                    <div className="h-4 w-[70%] bg-gray-200 rounded-sm flex overflow-hidden">
+                    <div className="h-4 w-[70%] bg-gray-200 dark:bg-neutral-800 rounded-sm flex overflow-hidden">
                       {timingItems.map((t) => {
                         const label = `${t.key} (${t.value} ms)`;
                         const width = Math.max(1, (t.value / timingTotal) * 100);
@@ -439,8 +439,8 @@ export default function ResultsTable({
                     </div>
                   </>
                 ) : (
-                  <div className="flex items-center justify-between w-full text-xs text-gray-400">
-                    <div className="h-4 w-[70%] rounded-sm border border-dashed border-gray-300" />
+                  <div className="flex items-center justify-between w-full text-xs text-gray-400 dark:text-neutral-500">
+                    <div className="h-4 w-[70%] rounded-sm border border-dashed border-gray-300 dark:border-neutral-700" />
                     <Tooltip label="Timing data not available in this HAR entry.">
                       <span className="ml-2 w-16 text-right">No timing</span>
                     </Tooltip>
@@ -452,7 +452,7 @@ export default function ResultsTable({
         })}
 
         {filtered.length === 0 && (
-          <div className="px-4 py-6 text-center text-sm text-gray-500">
+          <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-neutral-400">
             No requests match the selected filters.
           </div>
         )}
@@ -544,7 +544,7 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 shadow-sm"
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-[10px] text-gray-700 dark:text-neutral-200 shadow-sm"
             style={{ left: pos.left, top: pos.top - 8 }}
           >
             {label}

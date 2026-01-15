@@ -50,18 +50,21 @@ export default function FiltersPanel({
   };
 
   return (
-    <div className="border border-gray-200 rounded-xl p-4 bg-white" ref={dropdownRef}>
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+    <div
+      className="border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-white dark:bg-neutral-900"
+      ref={dropdownRef}
+    >
+      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
         Filters
       </div>
       <div className="mt-3 space-y-3 text-sm">
         <div className="relative">
-          <MagnifyingGlassIcon className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          <MagnifyingGlassIcon className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500" />
           <input
             value={urlQuery}
             onChange={(e) => setUrlQuery(e.target.value)}
             placeholder="Filter URL"
-            className="pl-8 pr-2 py-1.5 w-full border border-gray-200 rounded-md"
+            className="pl-8 pr-2 py-1.5 w-full border border-gray-200 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>
 
@@ -173,14 +176,14 @@ function Dropdown({
       <button
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-md hover:text-gray-900 text-xs"
+        className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 dark:border-neutral-700 rounded-md hover:text-gray-900 dark:hover:text-neutral-100 text-xs text-gray-700 dark:text-neutral-200 bg-white dark:bg-neutral-800"
       >
         {label}
         <ChevronDownIcon className="h-4 w-4" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-36 bg-white border border-gray-200 rounded-md">
+        <div className="absolute z-10 mt-1 w-36 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-md">
           {children}
         </div>
       )}
@@ -208,7 +211,7 @@ function DropdownOption({
   return (
     <div
       onClick={onClick}
-      className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm"
+      className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-200"
     >
       <span className={active ? activeStyle : ''}>{children}</span>
       {active && <CheckIcon className="h-4 w-4" />}
@@ -232,7 +235,11 @@ function FilterChip({
       ? getMethodStyle(value ?? '')
       : variant === 'status'
       ? getStatusStyle(value ?? '')
-      : { border: 'border-emerald-200', bg: 'bg-emerald-50', text: 'text-emerald-700' };
+      : {
+          border: 'border-emerald-200 dark:border-emerald-400/40',
+          bg: 'bg-emerald-50 dark:bg-emerald-400/10',
+          text: 'text-emerald-700 dark:text-emerald-200',
+        };
 
   return (
     <div

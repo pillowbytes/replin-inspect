@@ -57,10 +57,10 @@ export default function RequestDetailsPanel({
   const activeTab = tabs.find((item) => item.id === tab) ?? tabs[0];
 
   return (
-    <div className="h-full flex border border-gray-200 rounded-xl overflow-hidden bg-white">
+    <div className="h-full flex border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden bg-white dark:bg-neutral-900">
       <div className="flex-1 min-w-0 flex flex-col">
         <div
-          className={`h-10 px-4 border-b border-gray-200 text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center ${
+          className={`h-10 px-4 border-b border-gray-200 dark:border-neutral-800 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400 flex items-center ${
             isAtTop ? '' : 'shadow-sm'
           } ${topBump ? '-translate-y-0.5 scale-y-105' : ''} origin-top transition-transform`}
         >
@@ -87,7 +87,7 @@ export default function RequestDetailsPanel({
               );
             }
           }}
-          className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6 text-sm"
+          className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6 text-sm text-gray-900 dark:text-neutral-100 no-scrollbar"
         >
           {tab === 'overview' && (
             <OverviewTab request={request} findings={requestFindings} />
@@ -104,7 +104,7 @@ export default function RequestDetailsPanel({
         </div>
       </div>
 
-      <div className="flex w-10 flex-col items-center gap-2 border-l border-gray-200 bg-gray-50/60 pt-1 pb-3">
+      <div className="flex w-10 flex-col items-center gap-2 border-l border-gray-200 dark:border-neutral-800 bg-gray-50/60 dark:bg-neutral-900/60 pt-1 pb-3">
         {tabs.map((item) => (
           <TabRailButton
             key={item.id}
@@ -273,14 +273,14 @@ function BodySection({
 
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
+        className="flex items-center gap-1 text-xs text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-neutral-100"
       >
         <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
         View body
       </button>
 
       {open && (
-        <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-gray-50 p-3 text-xs font-mono text-gray-800">
+        <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-gray-50 dark:bg-neutral-800 p-3 text-xs font-mono text-gray-800 dark:text-neutral-200 no-scrollbar">
           {body}
         </pre>
       )}
@@ -327,7 +327,7 @@ function HeadersTab({
         <>
           <button
             onClick={() => setShowAll((v) => !v)}
-            className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
+            className="flex items-center gap-1 text-xs text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-neutral-100"
           >
             <ChevronDownIcon className={`h-4 w-4 transition-transform ${showAll ? 'rotate-180' : ''}`} />
             All headers ({rest.length})
@@ -350,7 +350,7 @@ function HeadersTab({
 const TIMING_COLORS: Record<keyof HarTimings, string> = {
   blocked: 'bg-gray-400',
   dns: 'bg-purple-500',
-  connect: 'bg-blue-500',
+  connect: 'bg-blue-400',
   ssl: 'bg-indigo-500',
   send: 'bg-slate-500',
   wait: 'bg-amber-500',
@@ -406,7 +406,7 @@ function TimingTab({
               <span className={`h-2.5 w-2.5 rounded-full ${TIMING_COLORS[t.key]}`} />
               <span className="capitalize">{t.key}</span>
             </div>
-            <span className="tabular-nums text-gray-700">{t.value} ms</span>
+            <span className="tabular-nums text-gray-700 dark:text-neutral-200">{t.value} ms</span>
           </div>
         ))}
       </div>
@@ -427,7 +427,7 @@ function Section({
 }) {
   return (
     <div className="space-y-3">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
         {title}
       </div>
       <div className="space-y-2">{children}</div>
@@ -450,9 +450,9 @@ function KeyValue({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-gray-500 dark:text-neutral-400">{label}</div>
       <div
-        className={`text-sm text-gray-900 ${wrap ? 'break-all' : ''} ${
+        className={`text-sm text-gray-900 dark:text-neutral-100 ${wrap ? 'break-all' : ''} ${
           mono ? 'font-mono' : ''
         } ${className ?? ''}`}
       >
@@ -487,21 +487,21 @@ function FindingsBlock({
   return (
     <div className="space-y-3">
       {showSummary && (
-        <div className="grid grid-cols-3 gap-2 text-[11px] text-gray-500">
+        <div className="grid grid-cols-3 gap-2 text-[11px] text-gray-500 dark:text-neutral-400">
           <div className={`rounded-md border ${summaryStyles('critical')} px-2 py-1`}>
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-gray-900 dark:text-neutral-100">
               {counts.critical}
             </span>{' '}
             Critical
           </div>
           <div className={`rounded-md border ${summaryStyles('warning')} px-2 py-1`}>
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-gray-900 dark:text-neutral-100">
               {counts.warning}
             </span>{' '}
             Warnings
           </div>
           <div className={`rounded-md border ${summaryStyles('info')} px-2 py-1`}>
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-gray-900 dark:text-neutral-100">
               {counts.info}
             </span>{' '}
             Info
@@ -510,7 +510,7 @@ function FindingsBlock({
       )}
 
       {visible.length === 0 && info.length > 0 && (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 dark:text-neutral-400">
           No critical or warning findings for this section.
         </div>
       )}
@@ -519,22 +519,22 @@ function FindingsBlock({
         {visible.map((f, i) => (
           <div
             key={`${f.type}-${i}`}
-            className={`border border-gray-200 rounded-md p-3 ${severityCard(f.severity)} border-l-2 ${severityBorder(f.severity)}`}
+            className={`border border-gray-200 dark:border-neutral-800 rounded-md p-3 ${severityCard(f.severity)} border-l-2 ${severityBorder(f.severity)}`}
           >
-            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+            <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-neutral-400">
               <Tooltip label={severityLabel(f.severity)}>
                 <span className={`h-2 w-2 rounded-full ${severityDot(f.severity)}`} />
               </Tooltip>
               {f.confidence && (
-                <span className="text-gray-400">
+                <span className="text-gray-400 dark:text-neutral-500">
                   Confidence: {f.confidence}
                 </span>
               )}
             </div>
-            <div className="mt-2 text-sm text-gray-800 break-words">
+            <div className="mt-2 text-sm text-gray-800 dark:text-neutral-100 break-words">
               {formatFindingText(f.description)}
             </div>
-            <div className="mt-1 text-xs font-semibold text-gray-600 break-words">
+            <div className="mt-1 text-xs font-semibold text-gray-600 dark:text-neutral-300 break-words">
               {formatFindingText(f.suggestedAction)}
             </div>
           </div>
@@ -544,7 +544,7 @@ function FindingsBlock({
       {info.length > 0 && (
         <button
           onClick={() => setShowAll((v) => !v)}
-          className="text-xs text-gray-600 hover:text-gray-900"
+          className="text-xs text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200"
         >
           {showAll
             ? 'Hide info findings'
@@ -581,7 +581,11 @@ function KeyValueList({
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="text-sm text-gray-500 py-6 text-center">{text}</div>;
+  return (
+    <div className="text-sm text-gray-500 dark:text-neutral-400 py-6 text-center">
+      {text}
+    </div>
+  );
 }
 
 function TabRailButton({
@@ -603,14 +607,14 @@ function TabRailButton({
       aria-label={label}
       className={`relative flex h-8 w-8 items-center justify-center transition ${
         active
-          ? 'text-blue-600'
-          : 'text-gray-500 hover:text-gray-900'
+          ? 'text-blue-500 dark:text-neutral-100'
+          : 'text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200'
       }`}
     >
       <Icon className="h-5 w-5" />
       {active && (
         <span
-          className={`absolute top-1/2 h-6 w-1 -translate-y-1/2 bg-blue-600 ${
+          className={`absolute top-1/2 h-6 w-1 -translate-y-1/2 bg-blue-400 dark:bg-neutral-300 ${
             side === 'right'
               ? 'left-0 rounded-r-full'
               : 'right-0 rounded-l-full'
@@ -701,7 +705,7 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 shadow-sm"
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-[10px] text-gray-700 dark:text-neutral-200 shadow-sm"
             style={{ left: pos.left, top: pos.top - 8 }}
           >
             {label}
@@ -745,21 +749,21 @@ function highestSeverity(findings: Finding[]) {
 }
 
 function severityDot(severity: Finding['severity']) {
-  if (severity === 'critical') return 'bg-red-500';
-  if (severity === 'warning') return 'bg-amber-500';
-  return 'bg-gray-300';
+  if (severity === 'critical') return 'bg-red-500 dark:bg-red-400';
+  if (severity === 'warning') return 'bg-amber-500 dark:bg-amber-400';
+  return 'bg-gray-300 dark:bg-neutral-600';
 }
 
 function severityBorder(severity: Finding['severity']) {
-  if (severity === 'critical') return 'border-l-red-500';
-  if (severity === 'warning') return 'border-l-amber-400';
-  return 'border-l-gray-300';
+  if (severity === 'critical') return 'border-l-red-500 dark:border-l-red-400';
+  if (severity === 'warning') return 'border-l-amber-400 dark:border-l-amber-300';
+  return 'border-l-gray-300 dark:border-l-neutral-600';
 }
 
 function summaryStyles(severity: Finding['severity']) {
-  if (severity === 'critical') return 'border-red-200 bg-red-50';
-  if (severity === 'warning') return 'border-amber-200 bg-amber-50';
-  return 'border-gray-200 bg-gray-50';
+  if (severity === 'critical') return 'border-red-200 bg-red-50 dark:border-red-400/40 dark:bg-red-400/10';
+  if (severity === 'warning') return 'border-amber-200 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-400/10';
+  return 'border-gray-200 bg-gray-50 dark:border-neutral-700 dark:bg-neutral-800/40';
 }
 
 function severityLabel(severity: Finding['severity']) {
@@ -769,9 +773,9 @@ function severityLabel(severity: Finding['severity']) {
 }
 
 function severityCard(severity: Finding['severity']) {
-  if (severity === 'critical') return 'bg-red-50';
-  if (severity === 'warning') return 'bg-amber-50';
-  return 'bg-gray-50';
+  if (severity === 'critical') return 'bg-red-50 dark:bg-red-400/10';
+  if (severity === 'warning') return 'bg-amber-50 dark:bg-amber-400/10';
+  return 'bg-gray-50 dark:bg-neutral-800/40';
 }
 
 function formatFindingText(text: string) {
@@ -779,7 +783,7 @@ function formatFindingText(text: string) {
   return parts.map((part, index) => {
     if (part.match(/^(https?:\/\/|wss?:\/\/)/)) {
       return (
-        <span key={index} className="text-xs text-gray-600 break-all">
+        <span key={index} className="text-xs text-gray-600 dark:text-neutral-300 break-all">
           {part}
         </span>
       );

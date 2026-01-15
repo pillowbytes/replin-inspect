@@ -35,7 +35,7 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
   };
 
   return (
-    <div className="border border-gray-200 rounded-xl p-6 text-center">
+    <div className="border border-gray-200 dark:border-neutral-800 rounded-xl p-6 text-center bg-white dark:bg-neutral-900">
       {/* Hidden input */}
       <input
         ref={inputRef}
@@ -50,16 +50,18 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
       <label
         onClick={() => !isLoading && inputRef.current?.click()}
         className={`flex flex-col items-center justify-center gap-3 cursor-pointer select-none ${
-          isLoading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-50'
+          isLoading
+            ? 'opacity-60 cursor-not-allowed'
+            : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
         } rounded-lg p-6 transition`}
       >
-        <ArrowUpTrayIcon className="h-6 w-6 text-gray-700" />
+        <ArrowUpTrayIcon className="h-6 w-6 text-gray-700 dark:text-neutral-200" />
 
-        <div className="text-sm font-medium text-gray-900">
+        <div className="text-sm font-medium text-gray-900 dark:text-neutral-100">
           {isLoading ? 'Analyzing HAR file…' : 'Start inspecting'}
         </div>
 
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 dark:text-neutral-400">
           Click to select a .har file from your computer
         </div>
       </label>

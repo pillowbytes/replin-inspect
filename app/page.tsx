@@ -29,13 +29,18 @@ import {
   ArrowDownTrayIcon,
   Cog6ToothIcon,
   TrashIcon,
+  MoonIcon,
+  SunIcon,
 } from '@heroicons/react/24/outline';
 
 type AnalysisMode = 'network' | 'token';
+type ThemePreference = 'system' | 'light' | 'dark';
 
 export default function HomePage() {
   const [analysisStarted, setAnalysisStarted] = useState(false);
   const [mode, setMode] = useState<AnalysisMode>('network');
+  const [theme, setTheme] = useState<ThemePreference>('system');
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [guideTab, setGuideTab] = useState<'chrome' | 'edge' | 'firefox' | 'safari'>('chrome');
   const [requests, setRequests] = useState<HarRequest[]>([]);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
@@ -119,33 +124,86 @@ export default function HomePage() {
     }
   }, [analysisStarted]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem('theme');
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+      setTheme(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const applyTheme = (pref: ThemePreference) => {
+      const shouldDark = pref === 'dark' || (pref === 'system' && media.matches);
+      root.classList.toggle('dark', shouldDark);
+      setIsDarkMode(shouldDark);
+    };
+
+    applyTheme(theme);
+    window.localStorage.setItem('theme', theme);
+
+    const handler = (event: MediaQueryListEvent) => {
+      if (theme === 'system') {
+        root.classList.toggle('dark', event.matches);
+        setIsDarkMode(event.matches);
+      }
+    };
+
+    media.addEventListener('change', handler);
+    return () => media.removeEventListener('change', handler);
+  }, [theme]);
+
+  const handleThemeToggle = () => {
+    setTheme(isDarkMode ? 'light' : 'dark');
+  };
+
   return (
     <div
       className={`flex flex-col ${
         analysisStarted ? 'h-screen' : 'min-h-screen'
       }`}
     >
-      <header className="w-full border-b border-gray-200">
+      <header className="w-full border-b border-gray-200 dark:border-neutral-800">
         <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <Square3Stack3DIcon className="h-6 w-6 text-gray-900" />
+            <Square3Stack3DIcon className="h-6 w-6 text-gray-900 dark:text-neutral-100" />
             <div>
-              <div className="text-lg font-semibold">Replin Inspect</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-lg font-semibold text-gray-900 dark:text-neutral-100">Replin Inspect</div>
+              <div className="text-xs text-gray-500 dark:text-neutral-400">
                 Client-side troubleshooting tools
               </div>
             </div>
           </Link>
 
-          <a
-            href="https://github.com/pillowbytes/replin-inspect/issues"
-            className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <BugAntIcon className="h-4 w-4" />
-            Report issue
-          </a>
+          <div className="flex items-center gap-2">
+            <Tooltip label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
+              <button
+                onClick={handleThemeToggle}
+                className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 dark:border-neutral-700 rounded-md text-gray-700 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-800"
+                type="button"
+              >
+                {isDarkMode ? (
+                  <SunIcon className="h-4 w-4" />
+                ) : (
+                  <MoonIcon className="h-4 w-4" />
+                )}
+                Theme
+              </button>
+            </Tooltip>
+            <a
+              href="https://github.com/pillowbytes/replin-inspect/issues"
+              className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 dark:border-neutral-700 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-800"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <BugAntIcon className="h-4 w-4" />
+              Report issue
+            </a>
+          </div>
         </div>
       </header>
 
@@ -154,15 +212,15 @@ export default function HomePage() {
           analysisStarted ? 'overflow-hidden flex flex-col gap-6' : 'space-y-8'
         }`}
       >
-        <nav className="relative border-b border-gray-200 pb-0 mb-6">
+        <nav className="relative border-b border-gray-200 dark:border-neutral-800 pb-0 mb-6">
           <div className="flex items-center justify-center">
-            <div className="inline-flex rounded-t-lg rounded-b-none bg-gray-100 p-1 text-sm">
+            <div className="inline-flex rounded-t-lg rounded-b-none bg-gray-100 dark:bg-neutral-900 p-1 text-sm">
               <button
                 onClick={() => setMode('network')}
                 className={`px-3 py-1.5 rounded-md ${
                   mode === 'network'
-                    ? 'bg-white border border-gray-200'
-                    : 'text-gray-600'
+                    ? 'bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-neutral-100'
+                    : 'text-gray-600 dark:text-neutral-300'
                 }`}
               >
                 <GlobeAltIcon className="h-4 w-4 inline mr-1" />
@@ -173,7 +231,7 @@ export default function HomePage() {
                   onClick={() => setMode('token')}
                   disabled
                   aria-disabled="true"
-                  className="px-3 py-1.5 rounded-md text-gray-400 cursor-not-allowed"
+                  className="px-3 py-1.5 rounded-md text-gray-400 dark:text-neutral-500 cursor-not-allowed"
                 >
                   <KeyIcon className="h-4 w-4 inline mr-1" />
                   Token
@@ -185,7 +243,7 @@ export default function HomePage() {
           {analysisStarted && (
             <button
               onClick={handleNewAnalysis}
-              className="absolute left-0 top-0 flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="absolute left-0 top-0 flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border border-gray-300 dark:border-neutral-700 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-800"
             >
               <FolderPlusIcon className="h-4 w-4" />
               New analysis
@@ -195,18 +253,18 @@ export default function HomePage() {
 
         {!analysisStarted ? (
           <div className="space-y-6">
-            <div className="border border-gray-200 rounded-2xl p-8 bg-white">
+            <div className="border border-gray-200 dark:border-neutral-800 rounded-2xl p-8 bg-white dark:bg-neutral-900">
               <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-center">
                 <div className="space-y-3">
-                  <div className="text-xl font-semibold text-gray-900">
+                  <div className="text-xl font-semibold text-gray-900 dark:text-neutral-100">
                     Start inspecting a HAR file
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-neutral-300">
                     Client-side request diagnostics for support and troubleshooting.
                   </p>
-                  <div className="pt-4 space-y-3 text-xs text-gray-500">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-900">
-                      <ShieldCheckIcon className="h-4 w-4 text-gray-500" />
+                  <div className="pt-4 space-y-3 text-xs text-gray-500 dark:text-neutral-400">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-900 dark:text-neutral-100">
+                      <ShieldCheckIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" />
                       Privacy
                     </div>
                     <p>
@@ -214,14 +272,14 @@ export default function HomePage() {
                       never uploaded or stored.
                     </p>
                     <div className="pt-3 space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-900">
-                        <CircleStackIcon className="h-4 w-4 text-gray-500" />
+                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-900 dark:text-neutral-100">
+                        <CircleStackIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" />
                         Cookies
                       </div>
                       <span>This tool currently uses no cookies.</span>
                     </div>
                   </div>
-                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <div className="mt-4 rounded-lg border border-amber-200 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-100">
                     This app is still in development. Found an issue? Report it on{' '}
                     <a
                       href="https://github.com/pillowbytes/replin-inspect/issues"
@@ -234,7 +292,7 @@ export default function HomePage() {
                     .
                   </div>
                 </div>
-                <div className="border border-gray-200 rounded-xl p-6 bg-gray-50">
+                <div className="border border-gray-200 dark:border-neutral-800 rounded-xl p-6 bg-gray-50 dark:bg-neutral-900/60">
                   {mode === 'network' && <UploadArea onParsed={handleParsed} />}
                   {mode === 'token' && <TokenInspector onDecoded={handleDecoded} />}
                 </div>
@@ -242,21 +300,21 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-              <div className="border border-gray-200 rounded-xl bg-white">
-                <div className="border-b border-gray-200 p-6">
+              <div className="border border-gray-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900">
+                <div className="border-b border-gray-200 dark:border-neutral-800 p-6">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                      <ClipboardDocumentListIcon className="h-4 w-4 text-gray-600" />
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
+                      <ClipboardDocumentListIcon className="h-4 w-4 text-gray-600 dark:text-neutral-400" />
                       How to capture a high‑quality HAR
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-neutral-300">
                       Follow these steps to generate a HAR file that makes it easy to diagnose
                       performance issues, failed requests, and authentication problems.
                     </p>
                   </div>
                 </div>
 
-                <div className="border-b border-gray-200 px-6">
+                <div className="border-b border-gray-200 dark:border-neutral-800 px-6">
                   <div className="flex gap-2 text-sm">
                     {[
                       { id: 'chrome', label: 'Chrome' },
@@ -267,21 +325,21 @@ export default function HomePage() {
                       <button
                         key={tab.id}
                         onClick={() => setGuideTab(tab.id as typeof guideTab)}
-                        className={`px-3 py-2 border-b -mb-px font-medium ${
-                          guideTab === tab.id
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
-                        {tab.label}
+                          className={`px-3 py-2 border-b -mb-px font-medium ${
+                            guideTab === tab.id
+                            ? 'border-blue-400 text-blue-400 dark:border-neutral-300 dark:text-neutral-100'
+                              : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200'
+                          }`}
+                        >
+                          {tab.label}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {guideTab === 'chrome' && (
-                  <div className="space-y-3 text-sm text-gray-600 p-6">
-                    <div className="font-semibold text-gray-900">Chrome</div>
+                  <div className="space-y-3 text-sm text-gray-600 dark:text-neutral-300 p-6">
+                    <div className="font-semibold text-gray-900 dark:text-neutral-100">Chrome</div>
                     <div>Use the Chrome DevTools Network panel:</div>
                     <ol className="space-y-3 list-decimal list-inside">
                       <li>In your browser, navigate to the page where you are encountering the issue.</li>
@@ -289,13 +347,13 @@ export default function HomePage() {
                       <li>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</li>
                       <li>Select <strong>Preserve log</strong>.</li>
                       <li>
-                        Click <span className="inline-flex align-middle mx-1"><NoSymbolIcon className="h-4 w-4 text-gray-500" /></span>
+                        Click <span className="inline-flex align-middle mx-1"><NoSymbolIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Clear network log</strong>.
                       </li>
                       <li>Reproduce the issue by interacting with the site.</li>
                       <li>
                         When you're done reproducing the issue,
-                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-gray-500" /></span>
+                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Export HAR (sanitized)</strong> and save the generated HAR file.
                       </li>
                     </ol>
@@ -303,8 +361,8 @@ export default function HomePage() {
                 )}
 
                 {guideTab === 'edge' && (
-                  <div className="space-y-3 text-sm text-gray-600 p-6">
-                    <div className="font-semibold text-gray-900">Edge</div>
+                  <div className="space-y-3 text-sm text-gray-600 dark:text-neutral-300 p-6">
+                    <div className="font-semibold text-gray-900 dark:text-neutral-100">Edge</div>
                     <div>Use the Microsoft Edge DevTools Network tool:</div>
                     <ol className="space-y-3 list-decimal list-inside">
                       <li>In your browser, navigate to the page where you are encountering the issue.</li>
@@ -312,13 +370,13 @@ export default function HomePage() {
                       <li>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</li>
                       <li>Select <strong>Preserve log</strong>.</li>
                       <li>
-                        Click <span className="inline-flex align-middle mx-1"><NoSymbolIcon className="h-4 w-4 text-gray-500" /></span>
+                        Click <span className="inline-flex align-middle mx-1"><NoSymbolIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Clear network log</strong>.
                       </li>
                       <li>Reproduce the issue by interacting with the site.</li>
                       <li>
                         When you're done reproducing the issue, click
-                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-gray-500" /></span>
+                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Export HAR</strong> and save the generated HAR file.
                       </li>
                     </ol>
@@ -326,25 +384,25 @@ export default function HomePage() {
                 )}
 
                 {guideTab === 'firefox' && (
-                  <div className="space-y-3 text-sm text-gray-600 p-6">
-                    <div className="font-semibold text-gray-900">Firefox</div>
+                  <div className="space-y-3 text-sm text-gray-600 dark:text-neutral-300 p-6">
+                    <div className="font-semibold text-gray-900 dark:text-neutral-100">Firefox</div>
                     <div>Use the Firefox DevTools Network Monitor:</div>
                     <ol className="space-y-3 list-decimal list-inside">
                       <li>In your browser, navigate to the page where you are encountering the issue.</li>
                       <li>Open Firefox DevTools: right-click anywhere on the page and choose <strong>Inspect</strong>.</li>
                       <li>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</li>
                       <li>
-                        Click <span className="inline-flex align-middle mx-1"><Cog6ToothIcon className="h-4 w-4 text-gray-500" /></span>
+                        Click <span className="inline-flex align-middle mx-1"><Cog6ToothIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Settings</strong> and then select <strong>Persist Logs</strong>.
                       </li>
                       <li>
-                        Click <span className="inline-flex align-middle mx-1"><TrashIcon className="h-4 w-4 text-gray-500" /></span>
+                        Click <span className="inline-flex align-middle mx-1"><TrashIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Clear</strong>.
                       </li>
                       <li>Reproduce the issue by interacting with the site.</li>
                       <li>
                         When you're done reproducing the issue, click
-                        <span className="inline-flex align-middle mx-1"><Cog6ToothIcon className="h-4 w-4 text-gray-500" /></span>
+                        <span className="inline-flex align-middle mx-1"><Cog6ToothIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Settings &gt; Save All As HAR</strong> and save the generated HAR file.
                       </li>
                     </ol>
@@ -352,8 +410,8 @@ export default function HomePage() {
                 )}
 
                 {guideTab === 'safari' && (
-                  <div className="space-y-3 text-sm text-gray-600 p-6">
-                    <div className="font-semibold text-gray-900">Safari</div>
+                  <div className="space-y-3 text-sm text-gray-600 dark:text-neutral-300 p-6">
+                    <div className="font-semibold text-gray-900 dark:text-neutral-100">Safari</div>
                     <div>Use the Safari Web Inspector Network tab:</div>
                     <ol className="space-y-3 list-decimal list-inside">
                       <li>Enable Safari developer tools.</li>
@@ -362,21 +420,21 @@ export default function HomePage() {
                       <li>In the Web Inspector, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</li>
                       <li>Select <strong>Preserve Log</strong> and reload the web page.</li>
                       <li>
-                        Click <span className="inline-flex align-middle mx-1"><TrashIcon className="h-4 w-4 text-gray-500" /></span>
+                        Click <span className="inline-flex align-middle mx-1"><TrashIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Clear Network Items</strong>.
                       </li>
                       <li>Reproduce the issue by interacting with the site.</li>
                       <li>
                         When you're done reproducing the issue, click
-                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-gray-500" /></span>
+                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-gray-500 dark:text-neutral-400" /></span>
                         <strong>Export</strong> and save the generated HAR file.
                       </li>
                     </ol>
                   </div>
                 )}
 
-                <div className="border-t border-gray-200 p-4">
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-500">
+                <div className="border-t border-gray-200 dark:border-neutral-800 p-4">
+                  <div className="rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800 p-4 text-xs text-gray-500 dark:text-neutral-400">
                     Tip: Capture both the failing request and a known‑good baseline to compare.
                   </div>
                 </div>
@@ -389,7 +447,7 @@ export default function HomePage() {
             {/* Summary strip */}
             {/* Command center layout */}
             <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(720px,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] gap-6 flex-1 min-h-0 h-full w-full">
-              <aside className="space-y-4 lg:overflow-y-auto lg:pr-2 pb-2">
+              <aside className="space-y-4 lg:overflow-y-auto lg:pr-2 pb-2 no-scrollbar">
                 <FiltersPanel
                   selectedMethods={selectedMethods}
                   setSelectedMethods={setSelectedMethods}
@@ -399,30 +457,30 @@ export default function HomePage() {
                   setUrlQuery={setUrlQuery}
                 />
 
-                <div className="border border-gray-200 rounded-xl p-4 bg-white">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <div className="border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-white dark:bg-neutral-900">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
                     Findings
                   </div>
-                  <div className="mt-3 space-y-2 text-sm">
+                  <div className="mt-3 space-y-2 text-sm text-gray-700 dark:text-neutral-300">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Total</span>
+                      <span className="text-gray-600 dark:text-neutral-400">Total</span>
                       <span className="font-medium">{findingsSummary.total}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Critical</span>
-                      <span className="font-medium text-red-600">
+                      <span className="text-gray-600 dark:text-neutral-400">Critical</span>
+                      <span className="font-medium text-red-600 dark:text-red-300">
                         {findingsSummary.critical}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Warnings</span>
-                      <span className="font-medium text-amber-600">
+                      <span className="text-gray-600 dark:text-neutral-400">Warnings</span>
+                      <span className="font-medium text-amber-600 dark:text-amber-300">
                         {findingsSummary.warning}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Info</span>
-                      <span className="font-medium text-gray-700">
+                      <span className="text-gray-600 dark:text-neutral-400">Info</span>
+                      <span className="font-medium text-gray-700 dark:text-neutral-200">
                         {findingsSummary.info}
                       </span>
                     </div>
@@ -432,7 +490,7 @@ export default function HomePage() {
                       onClick={() => setShowFindings(true)}
                       disabled
                       aria-disabled="true"
-                      className="mt-4 w-full text-sm px-3 py-2 border border-gray-200 rounded-md text-gray-400 cursor-not-allowed"
+                      className="mt-4 w-full text-sm px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-md text-gray-400 dark:text-neutral-500 cursor-not-allowed bg-white dark:bg-neutral-900"
                     >
                       Open findings
                     </button>
@@ -442,7 +500,7 @@ export default function HomePage() {
 
               <section className="min-h-0 flex flex-col pb-2">
                 <div className="mb-3 flex items-center justify-between">
-                  <div className="text-sm font-semibold text-gray-900">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
                     {showFindings ? 'Findings' : 'Requests'}
                   </div>
                   <div className="flex items-center gap-2 text-xs">
@@ -479,7 +537,7 @@ export default function HomePage() {
                     ) : (
                       <button
                         onClick={() => setShowFindings(false)}
-                        className="text-xs px-3 py-1.5 border border-gray-200 rounded-md hover:bg-gray-50"
+                        className="text-xs px-3 py-1.5 border border-gray-200 dark:border-neutral-700 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-800 text-gray-700 dark:text-neutral-200"
                       >
                         Back to requests
                       </button>
@@ -491,7 +549,7 @@ export default function HomePage() {
                     <div
                       className="border border-gray-200 rounded-xl overflow-hidden flex-1 min-h-0"
                     >
-                      <div className="h-full overflow-y-auto p-4">
+                      <div className="h-full overflow-y-auto p-4 no-scrollbar">
                         <FindingsView
                           findings={findings}
                           requests={requests}
@@ -518,7 +576,7 @@ export default function HomePage() {
 
               <aside className="min-h-0 flex flex-col pb-2">
                 <div className="mb-3 flex items-center justify-between">
-                  <div className="text-sm font-semibold text-gray-900">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
                     Request details
                   </div>
                 </div>
@@ -562,11 +620,13 @@ function SummaryPill({
     'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 font-medium';
   const toneClass =
     tone === 'danger'
-      ? 'border-red-200 bg-red-50 text-red-700'
+      ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-400/40 dark:bg-red-400/10 dark:text-red-200'
       : tone === 'warning'
-      ? 'border-amber-200 bg-amber-50 text-amber-700'
-      : 'border-gray-200 bg-white text-gray-700';
-  const activeClass = active ? 'ring-2 ring-offset-1 ring-gray-200' : '';
+      ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200'
+      : 'border-gray-200 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200';
+  const activeClass = active
+    ? 'ring-2 ring-offset-1 ring-gray-200 dark:ring-neutral-700 dark:ring-offset-neutral-900'
+    : '';
 
   return (
     <button onClick={onClick} className={`${base} ${toneClass} ${activeClass}`}>
@@ -622,7 +682,7 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] text-gray-700 shadow-sm"
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-[10px] text-gray-700 dark:text-neutral-200 shadow-sm"
             style={{ left: pos.left, top: pos.top - 8 }}
           >
             {label}
