@@ -190,16 +190,22 @@ export default function HomePage() {
                   <p className="text-sm text-gray-600">
                     Client-side request diagnostics for support and troubleshooting.
                   </p>
-                  <div className="flex items-start gap-2 text-xs text-gray-500">
-                    <ShieldCheckIcon className="h-4 w-4 text-gray-500" />
-                    <span>
-                      Local-only. No data leaves your browser. This is a static HTML file
-                      and can be used locally.
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs text-gray-500">
-                    <CircleStackIcon className="h-4 w-4 text-gray-500" />
-                    <span>This tool currently uses no cookies.</span>
+                  <div className="pt-4 space-y-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-900">
+                      <ShieldCheckIcon className="h-4 w-4 text-gray-500" />
+                      Privacy
+                    </div>
+                    <p>
+                      Runs entirely in your browser. HAR data is processed locally and
+                      never uploaded or stored.
+                    </p>
+                    <div className="pt-3 space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-900">
+                        <CircleStackIcon className="h-4 w-4 text-gray-500" />
+                        Cookies
+                      </div>
+                      <span>This tool currently uses no cookies.</span>
+                    </div>
                   </div>
                 </div>
                 <div className="border border-gray-200 rounded-xl p-6 bg-gray-50">
