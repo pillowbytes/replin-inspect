@@ -198,6 +198,7 @@ export default function ResultsTable({
     issueFilter,
     selectedMethods,
     selectedStatusClasses,
+    selectedResourceTypes,
     urlQuery,
     sortDir,
     sortColumn,

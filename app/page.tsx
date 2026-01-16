@@ -22,26 +22,25 @@ import {
   PlusIcon,
 } from '@heroicons/react/20/solid';
 import {
-  ShieldCheckIcon,
-  ClipboardDocumentListIcon,
-  CircleStackIcon,
-  NoSymbolIcon,
-  ArrowDownTrayIcon,
   Cog6ToothIcon,
-  TrashIcon,
+  ArrowDownTrayIcon,
+  ChevronDownIcon,
   MoonIcon,
+  NoSymbolIcon,
   SunIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 type AnalysisMode = 'network' | 'token';
 type ThemePreference = 'system' | 'light' | 'dark';
+type GuideTab = 'chrome' | 'edge' | 'firefox' | 'safari';
 
 export default function HomePage() {
   const [analysisStarted, setAnalysisStarted] = useState(false);
   const [mode, setMode] = useState<AnalysisMode>('network');
   const [theme, setTheme] = useState<ThemePreference>('system');
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [guideTab, setGuideTab] = useState<'chrome' | 'edge' | 'firefox' | 'safari'>('chrome');
+  const [guideTab, setGuideTab] = useState<GuideTab>('chrome');
   const [requests, setRequests] = useState<HarRequest[]>([]);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
@@ -51,6 +50,7 @@ export default function HomePage() {
     'all' | 'failures' | 'critical' | 'warning'
   >('all');
   const [showFindings, setShowFindings] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [selectedMethods, setSelectedMethods] = useState<Set<
     'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   >>(new Set());
@@ -130,6 +130,81 @@ export default function HomePage() {
     }
   }, [analysisStarted]);
 
+  const guideSteps: Record<GuideTab, React.ReactNode[]> = {
+    chrome: [
+      <>In your browser, navigate to the page where you are encountering the issue.</>,
+      <>Open Chrome DevTools: right-click anywhere on the page and choose <strong>Inspect</strong>.</>,
+      <>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</>,
+      <>Select <strong>Preserve log</strong>.</>,
+      <>
+        Click <InlineIcon icon={<NoSymbolIcon className="h-4 w-4 text-utility-muted" />} />
+        <strong>Clear network log</strong>.
+      </>,
+      <>Reproduce the issue by interacting with the site.</>,
+      <>
+        When you're done reproducing the issue, click{' '}
+        <InlineIcon icon={<ArrowDownTrayIcon className="h-4 w-4 text-utility-muted" />} />
+        <strong>Export HAR (sanitized)</strong> and save the generated HAR file.
+      </>,
+    ],
+    firefox: [
+      <>In your browser, navigate to the page where you are encountering the issue.</>,
+      <>Open Firefox DevTools: right-click anywhere on the page and choose <strong>Inspect</strong>.</>,
+      <>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</>,
+      <>
+        Click <InlineIcon icon={<Cog6ToothIcon className="h-4 w-4 text-utility-muted" />} />
+        <strong>Settings</strong> and then select <strong>Persist Logs</strong>.
+      </>,
+      <>
+        Click <InlineIcon icon={<TrashIcon className="h-4 w-4 text-utility-muted" />} />
+        <strong>Clear</strong>.
+      </>,
+      <>Reproduce the issue by interacting with the site.</>,
+      <>
+        When you're done reproducing the issue, click{' '}
+        <InlineIcon icon={<Cog6ToothIcon className="h-4 w-4 text-utility-muted" />} />
+        <strong>Settings &gt; Save All As HAR</strong> and save the generated HAR file.
+      </>,
+    ],
+    edge: [
+      <>In your browser, navigate to the page where you are encountering the issue.</>,
+      <>Open Microsoft Edge DevTools: right-click anywhere on the page and choose <strong>Inspect</strong>.</>,
+      <>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</>,
+      <>Select <strong>Preserve log</strong>.</>,
+      <>
+        Click <InlineIcon icon={<NoSymbolIcon className="h-4 w-4 text-utility-muted" />} />
+        <strong>Clear network log</strong>.
+      </>,
+      <>Reproduce the issue by interacting with the site.</>,
+      <>
+        When you're done reproducing the issue, click{' '}
+        <InlineIcon icon={<ArrowDownTrayIcon className="h-4 w-4 text-utility-muted" />} />
+        <strong>Export HAR</strong> and save the generated HAR file.
+      </>,
+    ],
+    safari: [
+      <>Enable Safari developer tools.</>,
+      <>In your browser, navigate to the page where you are encountering the issue.</>,
+      <>Open Safari Web Inspector: in the Safari menu bar, click <strong>Develop &gt; Show Web Inspector</strong>.</>,
+      <>In the Web Inspector, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</>,
+      <>Select <strong>Preserve Log</strong> and reload the web page.</>,
+      <>
+        Click <InlineIcon icon={<TrashIcon className="h-4 w-4 text-utility-muted" />} />
+        <strong>Clear Network Items</strong>.
+      </>,
+      <>Reproduce the issue by interacting with the site.</>,
+      <>
+        When you're done reproducing the issue, click <strong>Export</strong> and save the generated HAR file.
+      </>,
+    ],
+  };
+  const guideIntro: Record<GuideTab, string> = {
+    chrome: 'Use the Chrome DevTools Network panel:',
+    edge: 'Use the Microsoft Edge DevTools Network tool:',
+    firefox: 'Use the Firefox DevTools Network Monitor:',
+    safari: 'Use the Safari Web Inspector Network tab:',
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem('theme');
@@ -169,9 +244,7 @@ export default function HomePage() {
 
   return (
     <div
-      className={`flex flex-col ${
-        analysisStarted ? 'h-screen' : 'min-h-screen'
-      }`}
+      className="flex flex-col h-screen"
     >
       <header className="w-full border-b border-utility-border bg-utility-main">
         <div className="w-full grid grid-cols-[240px_minmax(0,1fr)_400px] items-center gap-0 py-3">
@@ -255,200 +328,120 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main
-        className={`flex-1 min-h-0 w-full ${
-          analysisStarted ? 'overflow-hidden flex flex-col' : 'space-y-8 px-6 pt-6 pb-8'
-        }`}
-      >
+      <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
         {!analysisStarted ? (
-          <div className="space-y-6">
-            <div className="border border-utility-border bg-utility-main p-4">
-              <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-center">
-                <div className="space-y-3">
-                  <div className="text-[16px] font-medium text-utility-text">
-                    Start inspecting a HAR file
-                  </div>
-                  <p className="text-[13px] text-utility-muted">
-                    Client-side request diagnostics for support and troubleshooting.
-                  </p>
-                  <div className="pt-4 space-y-3 text-[13px] text-utility-muted">
-                    <div className="flex items-center gap-2 utility-label">
-                      <ShieldCheckIcon className="h-4 w-4 text-utility-muted" />
-                      Privacy
-                    </div>
-                    <p>
-                      Runs entirely in your browser. HAR data is processed locally and
-                      never uploaded or stored.
-                    </p>
-                    <div className="pt-3 space-y-2">
-                      <div className="flex items-center gap-2 utility-label">
-                        <CircleStackIcon className="h-4 w-4 text-utility-muted" />
-                        Cookies
-                      </div>
-                      <span>This tool currently uses no cookies.</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 border border-utility-border bg-utility-sidebar px-3 py-2 text-[11px] text-utility-warning">
-                    This app is still in development. Found an issue? Report it on{' '}
-                    <a
-                      href="https://github.com/pillowbytes/replin-inspect/issues"
-                      className="font-semibold underline underline-offset-2"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      GitHub
-                    </a>
-                    .
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 grid grid-cols-[3fr_1fr] border-t border-utility-border">
+              <section className="flex items-center justify-center p-8">
+                <div className="w-full max-w-[980px] flex items-center justify-center">
+                  <div className="space-y-4">
+                    {mode === 'network' && <UploadArea onParsed={handleParsed} />}
+                    {mode === 'token' && <TokenInspector onDecoded={handleDecoded} />}
                   </div>
                 </div>
-                <div className="border border-utility-border bg-utility-sidebar p-4">
-                  {mode === 'network' && <UploadArea onParsed={handleParsed} />}
-                  {mode === 'token' && <TokenInspector onDecoded={handleDecoded} />}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              <div className="border border-utility-border bg-utility-main">
-                <div className="border-b border-utility-border p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-[16px] font-medium text-utility-text">
-                      <ClipboardDocumentListIcon className="h-4 w-4 text-utility-muted" />
-                      How to capture a high‑quality HAR
-                    </div>
-                    <p className="text-[13px] text-utility-muted">
-                      Follow these steps to generate a HAR file that makes it easy to diagnose
-                      performance issues, failed requests, and authentication problems.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-b border-utility-border px-4">
-                  <div className="flex gap-2 text-[13px]">
-                    {[
-                      { id: 'chrome', label: 'Chrome' },
-                      { id: 'edge', label: 'Edge' },
-                      { id: 'firefox', label: 'Firefox' },
-                      { id: 'safari', label: 'Safari' },
-                    ].map((tab) => (
+              </section>
+              <aside className="flex flex-col border-l border-utility-border bg-utility-sidebar overflow-hidden">
+                <div className="px-4 pt-4 pb-2">
+                  <div className="utility-label">Knowledge base</div>
+                  <div className="mt-3 flex items-center gap-4 text-[12px] font-bold">
+                    {(['chrome', 'firefox', 'edge', 'safari'] as const).map((tab) => (
                       <button
-                        key={tab.id}
-                        onClick={() => setGuideTab(tab.id as typeof guideTab)}
-                          className={`px-3 py-2 border-b-2 -mb-px font-medium ${
-                            guideTab === tab.id
+                        key={tab}
+                        onClick={() => {
+                          setGuideTab(tab);
+                          setGuideOpen(true);
+                        }}
+                        className={`pb-2 border-b-2 ${
+                          guideTab === tab
                             ? 'border-utility-accent text-utility-text'
-                              : 'border-transparent text-utility-muted hover:text-utility-text'
-                          }`}
-                        >
-                          {tab.label}
+                            : 'border-transparent text-utility-muted hover:text-utility-text'
+                        }`}
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                {guideTab === 'chrome' && (
-                  <div className="space-y-3 text-[13px] text-utility-muted p-4">
-                    <div className="text-[16px] font-medium text-utility-text">Chrome</div>
-                    <div>Use the Chrome DevTools Network panel:</div>
-                    <ol className="space-y-3 list-decimal list-inside">
-                      <li>In your browser, navigate to the page where you are encountering the issue.</li>
-                      <li>Open Chrome DevTools: right-click anywhere on the page and choose <strong>Inspect</strong>.</li>
-                      <li>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</li>
-                      <li>Select <strong>Preserve log</strong>.</li>
-                      <li>
-                        Click <span className="inline-flex align-middle mx-1"><NoSymbolIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Clear network log</strong>.
-                      </li>
-                      <li>Reproduce the issue by interacting with the site.</li>
-                      <li>
-                        When you're done reproducing the issue,
-                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Export HAR (sanitized)</strong> and save the generated HAR file.
-                      </li>
-                    </ol>
+                <div className="flex-1 min-h-0 px-4 pb-4 space-y-4 overflow-y-auto no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setGuideOpen((v) => !v)}
+                    className="w-full flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-utility-muted"
+                  >
+                    How to export HAR
+                    <ChevronDownIcon
+                      className={`h-4 w-4 transition-transform ${
+                        guideOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {guideOpen && (
+                    <div className="space-y-3 text-[13px] text-utility-text">
+                      <div className="text-utility-muted">{guideIntro[guideTab]}</div>
+                      {guideSteps[guideTab].map((step, idx) => (
+                        <div key={idx} className="flex gap-3">
+                          <div className="h-5 w-5 shrink-0 rounded-full border border-utility-accent text-utility-accent flex items-center justify-center text-[10px] font-mono">
+                            {idx + 1}
+                          </div>
+                          <div>{step}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!guideOpen && (
+                    <div className="text-[11px] text-utility-muted">
+                      Expand to view step-by-step capture instructions.
+                    </div>
+                  )}
+                  <div className="border border-utility-border bg-utility-alert p-3 text-[11px] text-utility-muted">
+                    HAR files can contain sensitive information. Replin Inspect processes everything locally.
                   </div>
-                )}
-
-                {guideTab === 'edge' && (
-                  <div className="space-y-3 text-[13px] text-utility-muted p-4">
-                    <div className="text-[16px] font-medium text-utility-text">Edge</div>
-                    <div>Use the Microsoft Edge DevTools Network tool:</div>
-                    <ol className="space-y-3 list-decimal list-inside">
-                      <li>In your browser, navigate to the page where you are encountering the issue.</li>
-                      <li>Open Microsoft Edge DevTools: right-click anywhere on the page and choose <strong>Inspect</strong>.</li>
-                      <li>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</li>
-                      <li>Select <strong>Preserve log</strong>.</li>
-                      <li>
-                        Click <span className="inline-flex align-middle mx-1"><NoSymbolIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Clear network log</strong>.
-                      </li>
-                      <li>Reproduce the issue by interacting with the site.</li>
-                      <li>
-                        When you're done reproducing the issue, click
-                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Export HAR</strong> and save the generated HAR file.
-                      </li>
-                    </ol>
-                  </div>
-                )}
-
-                {guideTab === 'firefox' && (
-                  <div className="space-y-3 text-[13px] text-utility-muted p-4">
-                    <div className="text-[16px] font-medium text-utility-text">Firefox</div>
-                    <div>Use the Firefox DevTools Network Monitor:</div>
-                    <ol className="space-y-3 list-decimal list-inside">
-                      <li>In your browser, navigate to the page where you are encountering the issue.</li>
-                      <li>Open Firefox DevTools: right-click anywhere on the page and choose <strong>Inspect</strong>.</li>
-                      <li>In the DevTools panel, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</li>
-                      <li>
-                        Click <span className="inline-flex align-middle mx-1"><Cog6ToothIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Settings</strong> and then select <strong>Persist Logs</strong>.
-                      </li>
-                      <li>
-                        Click <span className="inline-flex align-middle mx-1"><TrashIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Clear</strong>.
-                      </li>
-                      <li>Reproduce the issue by interacting with the site.</li>
-                      <li>
-                        When you're done reproducing the issue, click
-                        <span className="inline-flex align-middle mx-1"><Cog6ToothIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Settings &gt; Save All As HAR</strong> and save the generated HAR file.
-                      </li>
-                    </ol>
-                  </div>
-                )}
-
-                {guideTab === 'safari' && (
-                  <div className="space-y-3 text-[13px] text-utility-muted p-4">
-                    <div className="text-[16px] font-medium text-utility-text">Safari</div>
-                    <div>Use the Safari Web Inspector Network tab:</div>
-                    <ol className="space-y-3 list-decimal list-inside">
-                      <li>Enable Safari developer tools.</li>
-                      <li>In your browser, navigate to the page where you are encountering the issue.</li>
-                      <li>Open Safari Web Inspector: in the Safari menu bar, click <strong>Develop &gt; Show Web Inspector</strong>.</li>
-                      <li>In the Web Inspector, select the <strong>Network</strong> tab. The tool automatically begins recording network activity.</li>
-                      <li>Select <strong>Preserve Log</strong> and reload the web page.</li>
-                      <li>
-                        Click <span className="inline-flex align-middle mx-1"><TrashIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Clear Network Items</strong>.
-                      </li>
-                      <li>Reproduce the issue by interacting with the site.</li>
-                      <li>
-                        When you're done reproducing the issue, click
-                        <span className="inline-flex align-middle mx-1"><ArrowDownTrayIcon className="h-4 w-4 text-utility-muted" /></span>
-                        <strong>Export</strong> and save the generated HAR file.
-                      </li>
-                    </ol>
-                  </div>
-                )}
-
-                <div className="border-t border-utility-border p-3">
-                  <div className="border border-utility-border bg-utility-sidebar p-3 text-[11px] text-utility-muted">
-                    Tip: Capture both the failing request and a known‑good baseline to compare.
+                  <div className="space-y-3 text-[13px] text-utility-muted">
+                    <div className="text-[16px] font-medium text-utility-text">
+                      Start inspecting a HAR file
+                    </div>
+                    <p>Client-side request diagnostics for support and troubleshooting.</p>
+                    <div className="space-y-3">
+                      <div className="utility-label">Privacy</div>
+                      <p>
+                        Runs entirely in your browser. HAR data is processed locally and
+                        never uploaded or stored.
+                      </p>
+                      <div className="space-y-2">
+                        <div className="utility-label">Cookies</div>
+                        <span>This tool currently uses no cookies.</span>
+                      </div>
+                    </div>
+                    <div className="border border-utility-border bg-utility-alert px-3 py-2 text-[11px] text-utility-warning">
+                      This app is still in development. Found an issue? Report it on{' '}
+                      <a
+                        href="https://github.com/pillowbytes/replin-inspect/issues"
+                        className="font-semibold underline underline-offset-2"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        GitHub
+                      </a>
+                      .
+                    </div>
                   </div>
                 </div>
-              </div>
-
+                <div className="mt-auto border-t border-utility-border p-4">
+                  <div className="border border-utility-border bg-utility-main p-3 opacity-50">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-utility-border text-utility-text">
+                        Coming soon
+                      </span>
+                      <div className="text-[12px] font-medium text-utility-text">
+                        Token analysis
+                      </div>
+                    </div>
+                    <div className="mt-2 text-[11px] text-utility-muted">
+                      Automated JWT decoding and sensitive token identification.
+                    </div>
+                  </div>
+                </div>
+              </aside>
             </div>
           </div>
         ) : (
@@ -663,6 +656,10 @@ function Metric({
       <div className={`text-[13px] font-mono ${toneClass}`}>{value}</div>
     </div>
   );
+}
+
+function InlineIcon({ icon }: { icon: React.ReactNode }) {
+  return <span className="inline-flex align-middle mx-1">{icon}</span>;
 }
 
 function Tooltip({

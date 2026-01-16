@@ -1,7 +1,6 @@
 'use client';
 
 import { CheckIcon, XMarkIcon } from '@heroicons/react/20/solid';
-import { useRef } from 'react';
 import { getMethodStyle, getStatusStyle, getStatusText } from '@/lib/utils/filterStyles';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -25,8 +24,6 @@ export default function FiltersPanel({
   selectedResourceTypes,
   setSelectedResourceTypes,
 }: FiltersPanelProps) {
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
   const toggleSetValue = <T,>(set: Set<T>, value: T) => {
     const next = new Set(set);
     next.has(value) ? next.delete(value) : next.add(value);
@@ -34,7 +31,7 @@ export default function FiltersPanel({
   };
 
   return (
-    <div ref={dropdownRef} className="space-y-4 text-[13px]">
+    <div className="space-y-4 text-[13px]">
       <div className="space-y-2">
         <div className="utility-label">Resource types</div>
         <div className="space-y-1">

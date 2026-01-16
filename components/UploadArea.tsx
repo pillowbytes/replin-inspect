@@ -2,7 +2,8 @@
 
 import { parseHar } from '@/lib/parsers/harParser';
 import { HarRequest } from '@/types';
-import { ArrowUpTrayIcon } from '@heroicons/react/20/solid';
+import { ArrowUpTrayIcon, PlusIcon } from '@heroicons/react/20/solid';
+import { LockClosedIcon } from '@heroicons/react/24/outline';
 import { ChangeEvent, useRef, useState } from 'react';
 
 interface UploadAreaProps {
@@ -35,8 +36,7 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
   };
 
   return (
-    <div className="border border-utility-border p-4 text-center bg-utility-main">
-      {/* Hidden input */}
+    <div className="w-full max-w-[560px] border-2 border-dashed border-utility-border px-8 py-12 text-center bg-utility-main">
       <input
         ref={inputRef}
         type="file"
@@ -46,25 +46,26 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
         disabled={isLoading}
       />
 
-      {/* Clickable upload area */}
-      <label
-        onClick={() => !isLoading && inputRef.current?.click()}
-        className={`flex flex-col items-center justify-center gap-3 cursor-pointer select-none ${
-          isLoading
-            ? 'opacity-60 cursor-not-allowed'
-            : 'hover:bg-utility-sidebar'
-        } p-4 transition`}
-      >
-        <ArrowUpTrayIcon className="h-6 w-6 text-utility-text" />
-
-        <div className="text-[16px] font-medium text-utility-text">
-          {isLoading ? 'Analyzing HAR file…' : 'Start inspecting'}
+      <div className="flex flex-col items-center gap-4">
+        <ArrowUpTrayIcon className="h-8 w-8 text-utility-text" />
+        <div className="text-[20px] font-medium text-utility-text">Command Canvas</div>
+        <div className="text-[14px] text-utility-muted max-w-[400px]">
+          Drop your HTTP Archive (HAR) file here to initiate a local-first inspection sequence.
         </div>
-
-        <div className="text-[11px] text-utility-muted">
-          Click to select a .har file from your computer
+        <button
+          type="button"
+          onClick={() => !isLoading && inputRef.current?.click()}
+          className="h-10 px-5 rounded-[4px] bg-utility-accent text-white flex items-center gap-2"
+          disabled={isLoading}
+        >
+          <PlusIcon className="h-4 w-4" />
+          {isLoading ? 'Uploading…' : 'HAR'}
+        </button>
+        <div className="text-[11px] font-mono uppercase tracking-wide text-utility-muted flex items-center gap-2">
+          <LockClosedIcon className="h-4 w-4" />
+          Client-side only
         </div>
-      </label>
+      </div>
     </div>
   );
 }
