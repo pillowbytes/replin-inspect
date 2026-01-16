@@ -418,14 +418,17 @@ function Tooltip({
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('top');
   const triggerRef = useRef<HTMLSpanElement | null>(null);
 
   const updatePosition = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const shouldFlip = rect.top < 48;
+    setPlacement(shouldFlip ? 'bottom' : 'top');
     setPos({
       left: rect.left + rect.width / 2,
-      top: rect.top,
+      top: shouldFlip ? rect.bottom : rect.top,
     });
   };
 
@@ -456,8 +459,10 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-none bg-black dark:bg-neutral-800 px-2 py-1 text-[11px] font-mono text-white dark:text-neutral-100"
-            style={{ left: pos.left, top: pos.top - 8 }}
+            className={`pointer-events-none fixed z-[1000] -translate-x-1/2 whitespace-nowrap rounded-none bg-black dark:bg-neutral-800 px-2 py-1 text-[11px] font-mono text-white dark:text-neutral-100 ${
+              placement === 'top' ? '-translate-y-full' : 'translate-y-0'
+            }`}
+            style={{ left: pos.left, top: placement === 'top' ? pos.top - 8 : pos.top + 8 }}
           >
             {label}
           </span>,

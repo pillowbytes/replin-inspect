@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  ChevronDownIcon,
-  CheckIcon,
-  MagnifyingGlassIcon,
-} from '@heroicons/react/20/solid';
+import { ChevronDownIcon, CheckIcon } from '@heroicons/react/20/solid';
 import { useEffect, useRef, useState } from 'react';
 import { getMethodStyle, getStatusStyle, getStatusText } from '@/lib/utils/filterStyles';
 
@@ -56,16 +52,6 @@ export default function FiltersPanel({
     >
       <div className="utility-label">Filters</div>
       <div className="mt-3 space-y-3 text-[13px]">
-        <div className="relative">
-          <MagnifyingGlassIcon className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-utility-muted" />
-          <input
-            value={urlQuery}
-            onChange={(e) => setUrlQuery(e.target.value)}
-            placeholder="Filter URL"
-            className="pl-8 pr-2 h-8 w-full border border-utility-border rounded-[4px] bg-utility-main text-utility-text placeholder:text-utility-muted"
-          />
-        </div>
-
         <div className="flex items-center gap-2">
           <Dropdown
             label="Method"

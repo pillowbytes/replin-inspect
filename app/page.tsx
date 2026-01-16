@@ -16,10 +16,9 @@ import { HarRequest, TokenInfo, Finding } from '@/types';
 // Heroicons
 import { Square3Stack3DIcon } from '@heroicons/react/24/solid';
 import {
-  GlobeAltIcon,
-  KeyIcon,
   FolderPlusIcon,
   BugAntIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/20/solid';
 import {
   ShieldCheckIcon,
@@ -168,41 +167,83 @@ export default function HomePage() {
       }`}
     >
       <header className="w-full border-b border-utility-border bg-utility-main">
-        <div className="w-full px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <Square3Stack3DIcon className="h-6 w-6 text-utility-text" />
-            <div>
-              <div className="text-[16px] font-medium text-utility-text">Replin Inspect</div>
-              <div className="text-[11px] text-utility-muted">
-                Client-side troubleshooting tools
-              </div>
+        <div className="w-full grid grid-cols-[240px_minmax(0,1fr)_400px] items-center gap-0 py-3">
+          <div className="flex items-center justify-center gap-3 px-3 border-r border-utility-border">
+            <Link href="/" className="flex items-center gap-3">
+              <Square3Stack3DIcon className="h-7 w-7 text-utility-text" />
+              <div className="text-[18px] font-semibold text-utility-text">Replin Inspect</div>
+            </Link>
+          </div>
+          <div className="flex items-center px-3">
+            <div className="inline-flex text-[13px]">
+                <button
+                  onClick={() => setMode('network')}
+                  className={`px-3 h-[36px] border-b-2 ${
+                    mode === 'network'
+                      ? 'border-utility-accent text-utility-accent'
+                      : 'border-transparent text-utility-muted hover:text-utility-text'
+                } font-medium`}
+                >
+                  Network
+                </button>
+              <Tooltip label="Token analysis is not available yet.">
+                <button
+                  onClick={() => setMode('token')}
+                  disabled
+                  aria-disabled="true"
+                  className="px-3 h-[36px] border-b-2 border-transparent text-utility-muted dark:text-[#CBD5E1] cursor-not-allowed opacity-60 font-medium"
+                >
+                  Token
+                </button>
+              </Tooltip>
             </div>
-          </Link>
-
-          <div className="flex items-center gap-2">
+          </div>
+          <div className="flex items-center gap-3 justify-end px-3">
+            {analysisStarted && (
+              <div className="relative">
+                <MagnifyingGlassIcon className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-utility-muted" />
+                  <input
+                    value={urlQuery}
+                    onChange={(e) => setUrlQuery(e.target.value)}
+                    placeholder="Filter URL"
+                    className="pl-8 pr-2 h-8 w-80 border border-utility-border rounded-[4px] bg-[#EFF6FF] dark:bg-utility-sidebar text-[13px] text-utility-text placeholder:text-utility-muted"
+                  />
+                </div>
+              )}
+              {analysisStarted && (
+                <button
+                  onClick={handleNewAnalysis}
+                  className="utility-button-primary flex items-center gap-2 whitespace-nowrap text-white dark:text-[#0A0A0A] font-medium"
+                >
+                  <FolderPlusIcon className="h-5 w-5" />
+                  New analysis
+                </button>
+              )}
+            <Tooltip label="Report an issue">
+              <a
+                href="https://github.com/pillowbytes/replin-inspect/issues"
+                className="utility-button-ghost flex items-center justify-center"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Report issue"
+              >
+                <BugAntIcon className="h-4 w-4" />
+              </a>
+            </Tooltip>
             <Tooltip label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
               <button
                 onClick={handleThemeToggle}
-                className="utility-button flex items-center gap-2"
+                className="utility-button flex items-center justify-center"
                 type="button"
+                aria-label="Toggle theme"
               >
                 {isDarkMode ? (
                   <SunIcon className="h-4 w-4" />
                 ) : (
                   <MoonIcon className="h-4 w-4" />
                 )}
-                Theme
               </button>
             </Tooltip>
-            <a
-              href="https://github.com/pillowbytes/replin-inspect/issues"
-              className="utility-button-ghost flex items-center gap-2"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <BugAntIcon className="h-4 w-4" />
-              Report issue
-            </a>
           </div>
         </div>
       </header>
@@ -212,45 +253,6 @@ export default function HomePage() {
           analysisStarted ? 'overflow-hidden flex flex-col' : 'space-y-8 px-6 pt-6 pb-8'
         }`}
       >
-        <nav className="relative border-b border-utility-border px-6">
-          <div className="flex items-center justify-center h-[40px]">
-            <div className="inline-flex text-[13px]">
-              <button
-                onClick={() => setMode('network')}
-                className={`px-4 h-[40px] border-b-2 ${
-                  mode === 'network'
-                    ? 'border-utility-accent text-utility-text'
-                    : 'border-transparent text-utility-muted hover:text-utility-text'
-                }`}
-              >
-                <GlobeAltIcon className="h-4 w-4 inline mr-1" />
-                Network
-              </button>
-              <Tooltip label="Token analysis is not available yet.">
-                <button
-                  onClick={() => setMode('token')}
-                  disabled
-                  aria-disabled="true"
-                  className="px-4 h-[40px] border-b-2 border-transparent text-utility-muted cursor-not-allowed opacity-40"
-                >
-                  <KeyIcon className="h-4 w-4 inline mr-1" />
-                  Token
-                </button>
-              </Tooltip>
-            </div>
-          </div>
-
-          {analysisStarted && (
-            <button
-              onClick={handleNewAnalysis}
-              className="absolute left-6 top-1/2 -translate-y-1/2 utility-button-primary flex items-center gap-2"
-            >
-              <FolderPlusIcon className="h-4 w-4" />
-              New analysis
-            </button>
-          )}
-        </nav>
-
         {!analysisStarted ? (
           <div className="space-y-6">
             <div className="border border-utility-border bg-utility-main p-4">
@@ -639,13 +641,16 @@ function Tooltip({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('top');
 
   const updatePosition = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
+    const shouldFlip = rect.top < 48;
+    setPlacement(shouldFlip ? 'bottom' : 'top');
     setPos({
       left: rect.left + rect.width / 2,
-      top: rect.top,
+      top: shouldFlip ? rect.bottom : rect.top,
     });
   };
 
@@ -675,8 +680,10 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-none bg-black dark:bg-neutral-800 px-2 py-1 text-[11px] font-mono text-white dark:text-neutral-100"
-            style={{ left: pos.left, top: pos.top - 8 }}
+            className={`pointer-events-none fixed z-[1000] -translate-x-1/2 whitespace-nowrap rounded-none bg-black dark:bg-neutral-800 px-2 py-1 text-[11px] font-mono text-white dark:text-neutral-100 ${
+              placement === 'top' ? '-translate-y-full' : 'translate-y-0'
+            }`}
+            style={{ left: pos.left, top: placement === 'top' ? pos.top - 8 : pos.top + 8 }}
           >
             {label}
           </span>,
