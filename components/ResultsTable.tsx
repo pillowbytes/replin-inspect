@@ -21,12 +21,14 @@ interface ResultsTableProps {
   onSelectRequest?: (id: string | null) => void;
   selectedMethods?: Set<HttpMethod>;
   selectedStatusClasses?: Set<StatusClass>;
+  selectedResourceTypes?: Set<ResourceTypeFilter>;
   urlQuery?: string;
   issueFilter?: 'all' | 'failures' | 'critical' | 'warning';
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type StatusClass = '2xx' | '3xx' | '4xx' | '5xx';
+type ResourceTypeFilter = 'fetch-xhr' | 'js' | 'css' | 'websocket';
 type SortColumn = 'time' | 'duration';
 
 /* ======================
@@ -64,6 +66,25 @@ function sizeLabel(bytes?: number) {
   if (!bytes || bytes <= 0) return '—';
   if (bytes > 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
   return `${Math.round(bytes / 1024)} KB`;
+}
+
+function matchesResourceType(
+  resourceType: string,
+  selected: Set<ResourceTypeFilter>
+) {
+  if (selected.has('fetch-xhr') && (resourceType === 'fetch' || resourceType === 'xhr')) {
+    return true;
+  }
+  if (selected.has('js') && (resourceType === 'script' || resourceType === 'javascript')) {
+    return true;
+  }
+  if (selected.has('css') && (resourceType === 'stylesheet' || resourceType === 'css')) {
+    return true;
+  }
+  if (selected.has('websocket') && resourceType === 'websocket') {
+    return true;
+  }
+  return false;
 }
 
 const TIMING_COLORS: Record<
@@ -125,6 +146,7 @@ export default function ResultsTable({
   onSelectRequest,
   selectedMethods = new Set<HttpMethod>(),
   selectedStatusClasses = new Set<StatusClass>(),
+  selectedResourceTypes = new Set<ResourceTypeFilter>(),
   urlQuery = '',
   issueFilter = 'all',
 }: ResultsTableProps) {
@@ -157,8 +179,11 @@ export default function ResultsTable({
         const urlOk =
           urlQuery.trim() === '' ||
           r.url.toLowerCase().includes(urlQuery.toLowerCase());
+        const resourceOk =
+          selectedResourceTypes.size === 0 ||
+          matchesResourceType((r.resourceType ?? '').toLowerCase(), selectedResourceTypes);
 
-        return methodOk && statusOk && urlOk;
+        return methodOk && statusOk && urlOk && resourceOk;
       })
       .sort((a, b) => {
         const delta =

@@ -19,6 +19,7 @@ import {
   FolderPlusIcon,
   BugAntIcon,
   MagnifyingGlassIcon,
+  PlusIcon,
 } from '@heroicons/react/20/solid';
 import {
   ShieldCheckIcon,
@@ -57,6 +58,10 @@ export default function HomePage() {
     '2xx' | '3xx' | '4xx' | '5xx'
   >>(new Set());
   const [urlQuery, setUrlQuery] = useState('');
+  const [projectScope, setProjectScope] = useState('cloud-infra-v1');
+  const [selectedResourceTypes, setSelectedResourceTypes] = useState<Set<
+    'fetch-xhr' | 'js' | 'css' | 'websocket'
+  >>(new Set());
 
   const findings = useMemo(() => {
     if (!analysisStarted) return [];
@@ -83,7 +88,8 @@ export default function HomePage() {
               total
           )
         : 0;
-    return { total, failed, avgDuration };
+    const success = total > 0 ? Math.round(((total - failed) / total) * 100) : 0;
+    return { total, failed, avgDuration, success };
   }, [requests]);
 
   const findingsSummary = useMemo(() => {
@@ -110,6 +116,7 @@ export default function HomePage() {
     setSelectedRequestId(null);
     setSelectedMethods(new Set());
     setSelectedStatusClasses(new Set());
+    setSelectedResourceTypes(new Set());
     setUrlQuery('');
     setIssueFilter('all');
     setShowFindings(false);
@@ -448,52 +455,52 @@ export default function HomePage() {
           <>
             {/* Command center layout */}
             <div className="grid grid-cols-[240px_minmax(0,1fr)_400px] flex-1 min-h-0 w-full border-t border-utility-border">
-              <aside className="flex flex-col gap-4 p-3 overflow-y-auto no-scrollbar bg-utility-sidebar border-r border-utility-border">
-                <FiltersPanel
-                  selectedMethods={selectedMethods}
-                  setSelectedMethods={setSelectedMethods}
-                  selectedStatusClasses={selectedStatusClasses}
-                  setSelectedStatusClasses={setSelectedStatusClasses}
-                  urlQuery={urlQuery}
-                  setUrlQuery={setUrlQuery}
-                />
+              <aside className="flex flex-col gap-4 p-3 overflow-y-auto no-scrollbar bg-utility-sidebar dark:bg-utility-main border-r border-utility-border">
+                <div className="space-y-3">
+                  <div className="utility-label">Project scope</div>
+                  <select
+                    value={projectScope}
+                    onChange={(e) => setProjectScope(e.target.value)}
+                    className="h-8 w-full bg-utility-main text-[13px] font-mono text-utility-text px-2 border border-transparent focus:outline-none"
+                  >
+                    <option value="cloud-infra-v1">cloud-infra-v1</option>
+                    <option value="edge-gateway">edge-gateway</option>
+                    <option value="payments-api">payments-api</option>
+                  </select>
+                  <button
+                    onClick={handleNewAnalysis}
+                    className="utility-button-ghost h-8 w-full flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wide text-utility-muted"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    New analysis
+                  </button>
+                </div>
 
-                <div className="border border-utility-border bg-utility-main p-3">
-                  <div className="utility-label">Findings</div>
-                  <div className="mt-3 space-y-2 text-[13px] text-utility-text">
-                    <div className="flex items-center justify-between">
-                      <span className="text-utility-muted">Total</span>
-                      <span className="font-medium">{findingsSummary.total}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-utility-muted">Critical</span>
-                      <span className="font-medium text-utility-error">
-                        {findingsSummary.critical}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-utility-muted">Warnings</span>
-                      <span className="font-medium text-utility-warning">
-                        {findingsSummary.warning}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-utility-muted">Info</span>
-                      <span className="font-medium text-utility-text">
-                        {findingsSummary.info}
-                      </span>
-                    </div>
+                <div className="space-y-2">
+                  <div className="utility-label">Live metrics</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <Metric label="Requests" value={`${metrics.total}`} />
+                    <Metric label="Latency" value={`${metrics.avgDuration} ms`} tone="warning" />
+                    <Metric label="Success" value={`${metrics.success}%`} tone="success" />
                   </div>
-                  <Tooltip label="Full findings details are not available yet.">
-                    <button
-                      onClick={() => setShowFindings(true)}
-                      disabled
-                      aria-disabled="true"
-                      className="mt-4 w-full h-8 text-[13px] border border-utility-border rounded-[4px] text-utility-muted cursor-not-allowed bg-utility-main opacity-40"
-                    >
-                      Open findings
-                    </button>
-                  </Tooltip>
+                </div>
+
+                <div className="space-y-3">
+                  <FiltersPanel
+                    selectedMethods={selectedMethods}
+                    setSelectedMethods={setSelectedMethods}
+                    selectedStatusClasses={selectedStatusClasses}
+                    setSelectedStatusClasses={setSelectedStatusClasses}
+                    selectedResourceTypes={selectedResourceTypes}
+                    setSelectedResourceTypes={setSelectedResourceTypes}
+                  />
+                </div>
+
+                <div className="mt-auto pt-2">
+                  <button className="flex items-center gap-2 text-[12px] text-utility-muted">
+                    <Cog6ToothIcon className="h-4 w-4" />
+                    Configuration
+                  </button>
                 </div>
               </aside>
 
@@ -555,22 +562,23 @@ export default function HomePage() {
                       />
                     </div>
                   ) : (
-                    <ResultsTable
-                      requests={requests}
-                      findingsByRequestId={findingsByRequestId}
-                      selectedRequestId={selectedRequestId}
-                      onSelectRequest={setSelectedRequestId}
-                      selectedMethods={selectedMethods}
-                      selectedStatusClasses={selectedStatusClasses}
-                      urlQuery={urlQuery}
-                      issueFilter={issueFilter}
-                    />
+                <ResultsTable
+                  requests={requests}
+                  findingsByRequestId={findingsByRequestId}
+                  selectedRequestId={selectedRequestId}
+                  onSelectRequest={setSelectedRequestId}
+                  selectedMethods={selectedMethods}
+                  selectedStatusClasses={selectedStatusClasses}
+                  selectedResourceTypes={selectedResourceTypes}
+                  urlQuery={urlQuery}
+                  issueFilter={issueFilter}
+                />
                   )}
                 </div>
               </section>
 
-              <aside className="min-h-0 flex flex-col bg-utility-main">
-                <div className="h-[40px] px-4 flex items-center border-b border-utility-border">
+              <aside className="min-h-0 flex flex-col bg-utility-sidebar">
+                <div className="h-[40px] px-4 flex items-center border-b border-utility-border bg-utility-sidebar">
                   <div className="text-[16px] font-medium text-utility-text">
                     Request details
                   </div>
@@ -628,6 +636,32 @@ function SummaryPill({
       <span className="text-[11px] font-bold uppercase tracking-wide text-utility-muted">{label}</span>
       <span className="text-[11px] font-bold">{value}</span>
     </button>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string;
+  tone?: 'neutral' | 'warning' | 'success';
+}) {
+  const toneClass =
+    tone === 'warning'
+      ? 'text-utility-warning'
+      : tone === 'success'
+      ? 'text-utility-success'
+      : 'text-utility-text';
+
+  return (
+    <div className="space-y-1">
+      <div className="text-[11px] font-bold uppercase tracking-wide text-utility-muted">
+        {label}
+      </div>
+      <div className={`text-[13px] font-mono ${toneClass}`}>{value}</div>
+    </div>
   );
 }
 

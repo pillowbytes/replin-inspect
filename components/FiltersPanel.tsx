@@ -1,19 +1,20 @@
 'use client';
 
-import { ChevronDownIcon, CheckIcon } from '@heroicons/react/20/solid';
-import { useEffect, useRef, useState } from 'react';
+import { CheckIcon, XMarkIcon } from '@heroicons/react/20/solid';
+import { useRef } from 'react';
 import { getMethodStyle, getStatusStyle, getStatusText } from '@/lib/utils/filterStyles';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type StatusClass = '2xx' | '3xx' | '4xx' | '5xx';
+type ResourceTypeKey = 'fetch-xhr' | 'js' | 'css' | 'websocket';
 
 interface FiltersPanelProps {
   selectedMethods: Set<HttpMethod>;
   setSelectedMethods: (next: Set<HttpMethod>) => void;
   selectedStatusClasses: Set<StatusClass>;
   setSelectedStatusClasses: (next: Set<StatusClass>) => void;
-  urlQuery: string;
-  setUrlQuery: (next: string) => void;
+  selectedResourceTypes: Set<ResourceTypeKey>;
+  setSelectedResourceTypes: (next: Set<ResourceTypeKey>) => void;
 }
 
 export default function FiltersPanel({
@@ -21,23 +22,10 @@ export default function FiltersPanel({
   setSelectedMethods,
   selectedStatusClasses,
   setSelectedStatusClasses,
-  urlQuery,
-  setUrlQuery,
+  selectedResourceTypes,
+  setSelectedResourceTypes,
 }: FiltersPanelProps) {
-  const [openDropdown, setOpenDropdown] = useState<'method' | 'status' | null>(
-    null
-  );
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const toggleSetValue = <T,>(set: Set<T>, value: T) => {
     const next = new Set(set);
@@ -46,195 +34,96 @@ export default function FiltersPanel({
   };
 
   return (
-    <div
-      className="border border-utility-border bg-utility-main p-3"
-      ref={dropdownRef}
-    >
-      <div className="utility-label">Filters</div>
-      <div className="mt-3 space-y-3 text-[13px]">
-        <div className="flex items-center gap-2">
-          <Dropdown
-            label="Method"
-            isOpen={openDropdown === 'method'}
-            onToggle={() =>
-              setOpenDropdown(openDropdown === 'method' ? null : 'method')
-            }
-          >
-            {(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as HttpMethod[]).map(
-              (m) => (
-                <DropdownOption
+    <div ref={dropdownRef} className="space-y-4 text-[13px]">
+      <div className="space-y-2">
+        <div className="utility-label">Resource types</div>
+        <div className="space-y-1">
+          {([
+            { key: 'fetch-xhr', label: 'Fetch/XHR' },
+            { key: 'js', label: 'JS Assets' },
+            { key: 'css', label: 'Stylesheets' },
+            { key: 'websocket', label: 'WebSockets' },
+          ] as { key: ResourceTypeKey; label: string }[]).map((item) => {
+            const active = selectedResourceTypes.has(item.key);
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() =>
+                  setSelectedResourceTypes(
+                    toggleSetValue(selectedResourceTypes, item.key)
+                  )
+                }
+                className="flex items-center gap-2 text-utility-text py-0.5"
+              >
+                <span
+                  className={`h-3 w-3 border border-utility-border flex items-center justify-center ${
+                    active ? 'bg-utility-accent' : 'bg-transparent'
+                  }`}
+                >
+                  {active && <CheckIcon className="h-3 w-3 text-white" />}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="utility-label">Network filters</div>
+        <div className="flex flex-wrap gap-2">
+          {(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as HttpMethod[]).map(
+            (m) => {
+              const active = selectedMethods.has(m);
+              const style = getMethodStyle(m);
+              return (
+                <button
                   key={m}
-                  active={selectedMethods.has(m)}
-                  variant="method"
-                  value={m}
+                  type="button"
                   onClick={() =>
                     setSelectedMethods(toggleSetValue(selectedMethods, m))
                   }
+                  className={`inline-flex items-center gap-1 h-7 px-2 border rounded-[2px] text-[12px] uppercase ${
+                    active
+                      ? `${style.border} ${style.text} bg-utility-selection`
+                      : 'border-utility-border text-utility-muted bg-transparent'
+                  }`}
                 >
-                  {m}
-                </DropdownOption>
-              )
-            )}
-          </Dropdown>
-
-          <Dropdown
-            label="Status"
-            isOpen={openDropdown === 'status'}
-            onToggle={() =>
-              setOpenDropdown(openDropdown === 'status' ? null : 'status')
+                  <span>{m}</span>
+                  {active && <XMarkIcon className="h-3 w-3" />}
+                </button>
+              );
             }
-          >
-            {(['2xx', '3xx', '4xx', '5xx'] as StatusClass[]).map((s) => (
-              <DropdownOption
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(['2xx', '3xx', '4xx', '5xx'] as StatusClass[]).map((s) => {
+            const active = selectedStatusClasses.has(s);
+            const style = getStatusStyle(s);
+            const statusText = getStatusText(s);
+            return (
+              <button
                 key={s}
-                active={selectedStatusClasses.has(s)}
-                variant="status"
-                value={s}
+                type="button"
                 onClick={() =>
-                  setSelectedStatusClasses(toggleSetValue(selectedStatusClasses, s))
+                  setSelectedStatusClasses(
+                    toggleSetValue(selectedStatusClasses, s)
+                  )
                 }
+                className={`inline-flex items-center gap-1 h-7 px-2 border rounded-[2px] text-[12px] uppercase ${
+                  active
+                    ? `${style.border} ${statusText} bg-utility-selection`
+                    : 'border-utility-border text-utility-muted bg-transparent'
+                }`}
               >
-                {s}
-              </DropdownOption>
-            ))}
-          </Dropdown>
+                <span>{s}</span>
+                {active && <XMarkIcon className="h-3 w-3" />}
+              </button>
+            );
+          })}
         </div>
-        {(selectedMethods.size > 0 ||
-          selectedStatusClasses.size > 0 ||
-          urlQuery.trim() !== '') && (
-          <div className="flex flex-wrap gap-2 pt-2">
-            {Array.from(selectedMethods).map((m) => (
-              <FilterChip
-                key={`method:${m}`}
-                label={m}
-                variant="method"
-                value={m}
-                onRemove={() => {
-                  const next = new Set(selectedMethods);
-                  next.delete(m);
-                  setSelectedMethods(next);
-                }}
-              />
-            ))}
-            {Array.from(selectedStatusClasses).map((s) => (
-              <FilterChip
-                key={`status:${s}`}
-                label={s}
-                variant="status"
-                value={s}
-                onRemove={() => {
-                  const next = new Set(selectedStatusClasses);
-                  next.delete(s);
-                  setSelectedStatusClasses(next);
-                }}
-              />
-            ))}
-            {urlQuery.trim() !== '' && (
-              <FilterChip
-                key="url"
-                label={`URL: ${urlQuery}`}
-                variant="url"
-                onRemove={() => setUrlQuery('')}
-              />
-            )}
-          </div>
-        )}
       </div>
-    </div>
-  );
-}
-
-function Dropdown({
-  label,
-  isOpen,
-  onToggle,
-  children,
-}: {
-  label: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative">
-      <button
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        className="flex items-center gap-1 h-8 px-3 border border-utility-border rounded-[4px] text-[13px] text-utility-text bg-utility-main hover:bg-utility-sidebar"
-      >
-        {label}
-        <ChevronDownIcon className="h-4 w-4" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-10 mt-1 w-36 bg-utility-main border border-utility-border">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DropdownOption({
-  children,
-  active,
-  variant,
-  value,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active: boolean;
-  variant: 'method' | 'status';
-  value: string;
-  onClick: () => void;
-}) {
-  const activeStyle =
-    variant === 'method'
-      ? getMethodStyle(value).text
-      : getStatusText(value);
-  return (
-    <div
-      onClick={onClick}
-      className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-utility-sidebar text-[13px] text-utility-text"
-    >
-      <span className={active ? activeStyle : ''}>{children}</span>
-      {active && <CheckIcon className="h-4 w-4" />}
-    </div>
-  );
-}
-
-function FilterChip({
-  label,
-  variant,
-  value,
-  onRemove,
-}: {
-  label: string;
-  variant: 'method' | 'status' | 'url';
-  value?: string;
-  onRemove: () => void;
-}) {
-  const styles =
-    variant === 'method'
-      ? getMethodStyle(value ?? '')
-      : variant === 'status'
-      ? getStatusStyle(value ?? '')
-      : {
-          border: 'border-emerald-200 dark:border-emerald-400/40',
-          bg: 'bg-emerald-50 dark:bg-emerald-400/10',
-          text: 'text-emerald-700 dark:text-emerald-200',
-        };
-
-  return (
-    <div
-      className={`flex items-center gap-1 rounded-[4px] border px-2 py-1 text-[11px] font-bold ${styles.border} ${styles.bg} ${styles.text} ${
-        variant === 'url' ? 'normal-case' : 'uppercase tracking-wide'
-      }`}
-    >
-      <span className="truncate max-w-[150px]">{label}</span>
-      <button onClick={onRemove} className="text-current/70 hover:text-current">
-        ×
-      </button>
     </div>
   );
 }
