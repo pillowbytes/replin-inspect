@@ -51,20 +51,18 @@ export default function FiltersPanel({
 
   return (
     <div
-      className="border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-white dark:bg-neutral-900"
+      className="border border-utility-border bg-utility-main p-3"
       ref={dropdownRef}
     >
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
-        Filters
-      </div>
-      <div className="mt-3 space-y-3 text-sm">
+      <div className="utility-label">Filters</div>
+      <div className="mt-3 space-y-3 text-[13px]">
         <div className="relative">
-          <MagnifyingGlassIcon className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500" />
+          <MagnifyingGlassIcon className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-utility-muted" />
           <input
             value={urlQuery}
             onChange={(e) => setUrlQuery(e.target.value)}
             placeholder="Filter URL"
-            className="pl-8 pr-2 py-1.5 w-full border border-gray-200 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            className="pl-8 pr-2 h-8 w-full border border-utility-border rounded-[4px] bg-utility-main text-utility-text placeholder:text-utility-muted"
           />
         </div>
 
@@ -176,14 +174,14 @@ function Dropdown({
       <button
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 dark:border-neutral-700 rounded-md hover:text-gray-900 dark:hover:text-neutral-100 text-xs text-gray-700 dark:text-neutral-200 bg-white dark:bg-neutral-800"
+        className="flex items-center gap-1 h-8 px-3 border border-utility-border rounded-[4px] text-[13px] text-utility-text bg-utility-main hover:bg-utility-sidebar"
       >
         {label}
         <ChevronDownIcon className="h-4 w-4" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-36 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-md">
+        <div className="absolute z-10 mt-1 w-36 bg-utility-main border border-utility-border">
           {children}
         </div>
       )}
@@ -211,7 +209,7 @@ function DropdownOption({
   return (
     <div
       onClick={onClick}
-      className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-200"
+      className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-utility-sidebar text-[13px] text-utility-text"
     >
       <span className={active ? activeStyle : ''}>{children}</span>
       {active && <CheckIcon className="h-4 w-4" />}
@@ -243,9 +241,11 @@ function FilterChip({
 
   return (
     <div
-      className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${styles.border} ${styles.bg} ${styles.text}`}
+      className={`flex items-center gap-1 rounded-[4px] border px-2 py-1 text-[11px] font-bold ${styles.border} ${styles.bg} ${styles.text} ${
+        variant === 'url' ? 'normal-case' : 'uppercase tracking-wide'
+      }`}
     >
-      <span className="truncate max-w-[150px] font-semibold">{label}</span>
+      <span className="truncate max-w-[150px]">{label}</span>
       <button onClick={onRemove} className="text-current/70 hover:text-current">
         ×
       </button>

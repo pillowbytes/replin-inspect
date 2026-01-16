@@ -2,20 +2,10 @@
 
 import { Finding, HarRequest } from '@/types';
 import { getMethodStyle, getStatusText } from '@/lib/utils/filterStyles';
-import { SLOW_REQUEST_MS, VERY_SLOW_REQUEST_MS } from '@/lib/rules/networkRules';
 import {
-  ArrowsRightLeftIcon,
   BarsArrowDownIcon,
   BarsArrowUpIcon,
   ClockIcon,
-  CodeBracketIcon,
-  CubeIcon,
-  DocumentTextIcon,
-  ExclamationTriangleIcon,
-  FilmIcon,
-  GlobeAltIcon,
-  PaintBrushIcon,
-  PhotoIcon,
 } from '@heroicons/react/20/solid';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -60,7 +50,7 @@ function statusToClass(status: number): StatusClass {
 }
 
 function statusColor(status: number) {
-  if (status < 200) return 'text-gray-900 dark:text-neutral-200';
+  if (status < 200) return 'text-utility-text';
   return getStatusText(statusToClass(status));
 }
 
@@ -68,16 +58,6 @@ function durationBarColor(ms: number) {
   if (ms > 1500) return 'bg-red-500';
   if (ms > 500) return 'bg-amber-500';
   return 'bg-emerald-500';
-}
-
-function durationTextStyle(ms: number) {
-  if (ms >= VERY_SLOW_REQUEST_MS) {
-    return 'text-red-600 dark:text-red-300 font-semibold';
-  }
-  if (ms >= SLOW_REQUEST_MS) {
-    return 'text-amber-600 dark:text-amber-300 font-semibold';
-  }
-  return 'text-emerald-600 dark:text-emerald-300';
 }
 
 function sizeLabel(bytes?: number) {
@@ -90,13 +70,13 @@ const TIMING_COLORS: Record<
   'blocked' | 'dns' | 'connect' | 'ssl' | 'send' | 'wait' | 'receive',
   string
 > = {
-  blocked: 'bg-gray-400',
-  dns: 'bg-purple-500',
-  connect: 'bg-blue-400',
-  ssl: 'bg-indigo-500',
-  send: 'bg-slate-500',
-  wait: 'bg-amber-500',
-  receive: 'bg-emerald-500',
+  blocked: 'bg-utility-muted',
+  dns: 'bg-utility-dns',
+  connect: 'bg-utility-warning',
+  ssl: 'bg-utility-muted',
+  send: 'bg-utility-muted',
+  wait: 'bg-utility-waiting',
+  receive: 'bg-utility-receiving',
 };
 
 function normalizeTimings(timings?: HarRequest['timings']) {
@@ -127,6 +107,13 @@ function totalResponseSize(req: HarRequest) {
   );
 }
 
+function totalTransferSize(req: HarRequest) {
+  const requestBytes = totalRequestSize(req);
+  const responseBytes = totalResponseSize(req);
+  if (requestBytes == null && responseBytes == null) return undefined;
+  return (requestBytes ?? 0) + (responseBytes ?? 0);
+}
+
 /* ======================
    Component
    ====================== */
@@ -143,12 +130,9 @@ export default function ResultsTable({
 }: ResultsTableProps) {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [sortColumn, setSortColumn] = useState<SortColumn>('duration');
-  const [isAtTop, setIsAtTop] = useState(true);
-  const [topBump, setTopBump] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const bumpTimerRef = useRef<number | null>(null);
 
   /* ---------- Filtering & sorting ---------- */
   const filtered = useMemo(() => {
@@ -194,10 +178,6 @@ export default function ResultsTable({
     sortColumn,
   ]);
 
-  const maxDuration = useMemo(
-    () => Math.max(1, ...filtered.map((r) => ms(r.duration))),
-    [filtered],
-  );
 
   /* ---------- Auto-select first visible ---------- */
   useEffect(() => {
@@ -254,34 +234,15 @@ export default function ResultsTable({
   if (!requests.length) return null;
 
   return (
-    <div className="flex flex-col min-h-0 h-full gap-3" ref={containerRef}>
+    <div className="flex flex-col min-h-0 h-full" ref={containerRef}>
       {/* Rows */}
-      <div className="border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden flex-1 min-h-0 bg-white dark:bg-neutral-900">
+      <div className="overflow-hidden flex-1 min-h-0 bg-utility-main">
         <div
           ref={scrollRef}
-          onScroll={() => {
-            const top = scrollRef.current?.scrollTop ?? 0;
-            setIsAtTop(top <= 0);
-          }}
-          onWheel={(e) => {
-            const top = scrollRef.current?.scrollTop ?? 0;
-            if (top <= 0 && e.deltaY < 0) {
-              setTopBump(true);
-              if (bumpTimerRef.current) {
-                window.clearTimeout(bumpTimerRef.current);
-              }
-              bumpTimerRef.current = window.setTimeout(
-                () => setTopBump(false),
-                160,
-              );
-            }
-          }}
-          className="h-full overflow-y-auto overscroll-contain pb-2 no-scrollbar"
+          className="h-full overflow-y-auto overscroll-contain no-scrollbar"
         >
           <div
-            className={`sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 grid grid-cols-[120px_1fr_240px] items-center px-3 py-2 text-xs text-gray-500 dark:text-neutral-400 uppercase tracking-wide ${
-              isAtTop ? '' : 'shadow-sm'
-            } ${topBump ? '-translate-y-0.5 scale-y-105' : ''} origin-top transition-transform`}
+            className="sticky top-0 z-10 bg-utility-main grid grid-cols-[110px_70px_70px_minmax(0,1fr)_80px_90px_200px] items-center px-3 utility-table-header"
           >
             <button
               onClick={() => {
@@ -290,7 +251,7 @@ export default function ResultsTable({
                   sortColumn === 'time' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'
                 );
               }}
-              className="flex items-center gap-1 text-left hover:text-gray-700 dark:hover:text-neutral-200"
+              className="flex items-center gap-1 text-left hover:text-utility-text"
             >
               <ClockIcon className="h-3 w-3" />
               Time
@@ -301,15 +262,11 @@ export default function ResultsTable({
                   <BarsArrowDownIcon className="h-3 w-3" />
                 ))}
             </button>
-              <div className="space-y-1">
-                <div>Request</div>
-                <div className="flex items-center gap-3 text-[10px] text-gray-400 dark:text-neutral-500 normal-case tracking-normal">
-                  <span>Status</span>
-                  <span>Type</span>
-                  <span>Size sent → recv</span>
-                  <span>Findings</span>
-                </div>
-              </div>
+            <div>Method</div>
+            <div>Status</div>
+            <div>Path</div>
+            <div>Type</div>
+            <div>Size</div>
             <button
               onClick={() => {
                 setSortColumn('duration');
@@ -317,9 +274,9 @@ export default function ResultsTable({
                   sortColumn === 'duration' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'
                 );
               }}
-              className="flex items-center justify-end gap-1 text-right hover:text-gray-700 dark:hover:text-neutral-200"
+              className="flex items-center justify-end gap-1 text-right hover:text-utility-text"
             >
-              Timing
+              Timeline
               {sortColumn === 'duration' &&
                 (sortDir === 'asc' ? (
                   <BarsArrowUpIcon className="h-3 w-3" />
@@ -329,15 +286,10 @@ export default function ResultsTable({
             </button>
           </div>
 
-          <div className="divide-y">
+          <div>
         {filtered.map((req) => {
-          const findings = findingsByRequestId[req.id] ?? [];
           const selected = selectedRequestId === req.id;
           const durationMs = ms(req.duration);
-          const barWidth = Math.max(
-            4,
-            Math.round((durationMs / maxDuration) * 100),
-          );
           const timingItems = normalizeTimings(req.timings);
           const timingTotal =
             timingItems.reduce((s, t) => s + t.value, 0) || durationMs;
@@ -357,94 +309,80 @@ export default function ResultsTable({
                   onSelectRequest?.(req.id);
                 }
               }}
-              className={`grid grid-cols-[120px_1fr_240px] items-center px-3 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 focus:outline-none ${
+              className={`grid grid-cols-[110px_70px_70px_minmax(0,1fr)_80px_90px_200px] items-center px-3 utility-table-row cursor-pointer focus:outline-none ${
                 selected
-                  ? 'bg-gray-100 dark:bg-neutral-800 ring-1 ring-slate-300 dark:ring-neutral-700 border-l-4 border-blue-400 dark:border-neutral-300 shadow-sm'
+                  ? 'bg-utility-selection outline outline-1 outline-utility-border -outline-offset-1'
                   : ''
               }`}
             >
               {/* Time */}
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-400">
-                <ClockIcon className="h-3 w-3 shrink-0" />
-                <span>{formatTime(req.startTime)}</span>
+              <div className="text-[11px] text-utility-muted font-mono">
+                {formatTime(req.startTime)}
               </div>
 
-              {/* Request info */}
-              <div className="space-y-1 overflow-hidden">
-                <div className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">
-                  <span className={`font-method mr-2 ${getMethodStyle(req.method).text}`}>
-                    {req.method}
-                  </span>
-                  {req.url}
-                </div>
-
-                <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-neutral-300">
-                  <Tooltip label="HTTP status code from the response.">
-                    <span className={statusColor(req.status)}>
-                      {req.status}
-                    </span>
-                  </Tooltip>
-                  <ResourceTypeIcon type={req.resourceType} />
-                  <span className="flex items-center gap-1">
-                    <Tooltip
-                      label={`Request Size ${
-                        requestSizeLabel === '—' ? 'Not available' : requestSizeLabel
-                      }`}
-                    >
-                      <span>{requestSizeLabel}</span>
-                    </Tooltip>
-                    <span>→</span>
-                    <Tooltip
-                      label={`Response Size ${
-                        responseSizeLabel === '—' ? 'Not available' : responseSizeLabel
-                      }`}
-                    >
-                      <span>{responseSizeLabel}</span>
-                    </Tooltip>
-                  </span>
-
-                  {findings.length > 0 && (
-                    <Tooltip label="Issues detected for this request.">
-                      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-300">
-                        <ExclamationTriangleIcon className="h-3 w-3" />
-                        {findings.length}
-                      </span>
-                    </Tooltip>
-                  )}
-                </div>
+              {/* Method */}
+              <div className={`text-[13px] font-bold font-mono ${getMethodStyle(req.method).text}`}>
+                {req.method}
               </div>
+
+              {/* Status */}
+              <Tooltip label="HTTP status code from the response.">
+                <div className={`text-[13px] font-mono ${statusColor(req.status)}`}>
+                  {req.status}
+                </div>
+              </Tooltip>
+
+              {/* Path / Domain */}
+              <div className="min-w-0 flex items-center gap-2">
+                <span className="truncate font-mono text-[12px] text-utility-text">
+                  {req.path ?? req.url}
+                </span>
+                {req.domain && (
+                  <span className="truncate font-mono text-[11px] text-utility-muted">
+                    {req.domain}
+                  </span>
+                )}
+              </div>
+
+              {/* Type */}
+              <div className="text-[11px] font-bold uppercase text-utility-muted">
+                {(req.resourceType ?? 'request').toUpperCase()}
+              </div>
+
+              {/* Size */}
+              <Tooltip
+                label={`Request ${
+                  requestSizeLabel === '—' ? 'N/A' : requestSizeLabel
+                } · Response ${responseSizeLabel === '—' ? 'N/A' : responseSizeLabel}`}
+              >
+                <div className="text-[11px] font-mono text-utility-text">
+                  {sizeLabel(totalTransferSize(req))}
+                </div>
+              </Tooltip>
 
               {/* Timing */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end">
                 {timingItems.length > 0 ? (
-                  <>
-                    <div className="h-4 w-[70%] bg-gray-200 dark:bg-neutral-800 rounded-sm flex overflow-hidden">
-                      {timingItems.map((t) => {
-                        const label = `${t.key} (${t.value} ms)`;
-                        const width = Math.max(1, (t.value / timingTotal) * 100);
-                        return (
-                          <Tooltip
-                            key={t.key}
-                            label={label}
-                            className={`${TIMING_COLORS[t.key]} h-full`}
-                            style={{ width: `${width}%` }}
-                          >
-                            <span className="sr-only">{label}</span>
-                          </Tooltip>
-                        );
-                      })}
-                    </div>
-                    <div className={`text-xs w-16 text-right ${durationTextStyle(durationMs)}`}>
-                      {durationMs} ms
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between w-full text-xs text-gray-400 dark:text-neutral-500">
-                    <div className="h-4 w-[70%] rounded-sm border border-dashed border-gray-300 dark:border-neutral-700" />
-                    <Tooltip label="Timing data not available in this HAR entry.">
-                      <span className="ml-2 w-16 text-right">No timing</span>
-                    </Tooltip>
+                  <div className="h-2 w-full bg-utility-border flex overflow-hidden">
+                    {timingItems.map((t) => {
+                      const label = `${t.key} (${t.value} ms)`;
+                      const width = Math.max(1, (t.value / timingTotal) * 100);
+                      return (
+                        <Tooltip
+                          key={t.key}
+                          label={label}
+                          className={`${TIMING_COLORS[t.key]} h-full`}
+                          style={{ width: `${width}%` }}
+                        >
+                          <span className="sr-only">{label}</span>
+                        </Tooltip>
+                      );
+                    })}
                   </div>
+                ) : (
+                  <Tooltip label="Timing data not available in this HAR entry.">
+                    <div className="h-2 w-full border border-dashed border-utility-border" />
+                  </Tooltip>
                 )}
               </div>
             </div>
@@ -452,7 +390,7 @@ export default function ResultsTable({
         })}
 
         {filtered.length === 0 && (
-          <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-neutral-400">
+          <div className="px-4 py-6 text-center text-[13px] text-utility-muted">
             No requests match the selected filters.
           </div>
         )}
@@ -466,32 +404,6 @@ export default function ResultsTable({
 /* ======================
    Small UI helpers
    ====================== */
-
-function ResourceTypeIcon({ type }: { type?: string }) {
-  const key = (type ?? 'request').toLowerCase();
-  const mapping: Record<string, { label: string; icon: any }> = {
-    document: { label: 'Document', icon: DocumentTextIcon },
-    script: { label: 'Script', icon: CodeBracketIcon },
-    stylesheet: { label: 'Stylesheet', icon: PaintBrushIcon },
-    image: { label: 'Image', icon: PhotoIcon },
-    media: { label: 'Media', icon: FilmIcon },
-    font: { label: 'Font', icon: CubeIcon },
-    xhr: { label: 'XHR', icon: ArrowsRightLeftIcon },
-    fetch: { label: 'Fetch', icon: ArrowsRightLeftIcon },
-  };
-
-  const item = mapping[key] ?? { label: type ?? 'Request', icon: GlobeAltIcon };
-  const Icon = item.icon;
-  const label = `Request resource type: ${item.label}`;
-
-  return (
-    <Tooltip label={label}>
-      <span className="inline-flex items-center text-gray-600">
-        <Icon className="h-4 w-4" />
-      </span>
-    </Tooltip>
-  );
-}
 
 function Tooltip({
   label,
@@ -544,7 +456,7 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-[10px] text-gray-700 dark:text-neutral-200 shadow-sm"
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-none bg-black dark:bg-neutral-800 px-2 py-1 text-[11px] font-mono text-white dark:text-neutral-100"
             style={{ left: pos.left, top: pos.top - 8 }}
           >
             {label}

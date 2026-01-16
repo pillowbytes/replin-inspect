@@ -87,11 +87,11 @@ export default function AnalysisTile({
         className={`${
           embedded
             ? 'p-0 bg-transparent border-0'
-            : 'border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-white dark:bg-neutral-900'
+            : 'border border-utility-border p-4 bg-utility-main'
         } flex items-center gap-2`}
       >
-        <CheckCircleIcon className="h-5 w-5 text-emerald-500 dark:text-emerald-300" />
-        <div className="text-sm text-gray-700 dark:text-neutral-300">
+        <CheckCircleIcon className="h-5 w-5 text-utility-success" />
+        <div className="text-[13px] text-utility-muted">
           No issues detected in this analysis.
         </div>
       </div>
@@ -103,13 +103,13 @@ export default function AnalysisTile({
       className={`${
         embedded
           ? 'p-0 bg-transparent border-0'
-          : 'border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-white dark:bg-neutral-900'
+          : 'border border-utility-border p-4 bg-utility-main'
       } space-y-4`}
     >
       {/* Header */}
       <div className="flex items-center gap-2">
-        <ExclamationTriangleIcon className="h-5 w-5 text-amber-500 dark:text-amber-300" />
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
+        <ExclamationTriangleIcon className="h-5 w-5 text-utility-warning" />
+        <h2 className="text-[16px] font-medium text-utility-text">
           Analysis summary
         </h2>
       </div>
@@ -142,11 +142,11 @@ export default function AnalysisTile({
                       openType ? 'rotate-180' : ''
                     }`}
                   />
-                  <span className="text-sm font-medium text-gray-800 capitalize">
+                  <span className="text-[13px] font-medium text-utility-text capitalize">
                     {type.replace(/_/g, ' ')}
                   </span>
                 </div>
-                <span className="text-xs text-gray-500 dark:text-neutral-400">
+                <span className="text-[11px] text-utility-muted">
                   {totalCount} requests
                 </span>
               </button>
@@ -170,7 +170,7 @@ export default function AnalysisTile({
                               [urlKey]: !s[urlKey],
                             }))
                           }
-                          className="flex items-center justify-between w-full text-left text-sm text-gray-700 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-neutral-100"
+                          className="flex items-center justify-between w-full text-left text-[13px] text-utility-text hover:text-utility-text"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <ChevronDownIcon
@@ -184,7 +184,7 @@ export default function AnalysisTile({
                               </span>
                             </Tooltip>
                           </div>
-                          <span className="text-xs text-gray-500 dark:text-neutral-400">
+                          <span className="text-[11px] text-utility-muted">
                             {allGroups.reduce((s, [, a]) => s + a.length, 0)}
                           </span>
                         </button>
@@ -198,23 +198,23 @@ export default function AnalysisTile({
                               return (
                                 <div key={key} className="space-y-1">
                                   {/* Message header */}
-                                  <div className="flex items-start justify-between text-sm">
+                                  <div className="flex items-start justify-between text-[13px]">
                                     <div>
-                                      <div className="text-gray-900 dark:text-neutral-100">
+                                      <div className="text-utility-text">
                                         {msg}
                                       </div>
                                       {sample.confidence && (
-                                        <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+                                        <div className="text-[11px] text-utility-muted">
                                           Confidence: {sample.confidence}
                                         </div>
                                       )}
                                       {sample.suggestedAction && (
-                                        <div className="text-xs text-gray-500 dark:text-neutral-400">
+                                        <div className="text-[11px] text-utility-muted">
                                           {sample.suggestedAction}
                                         </div>
                                       )}
                                     </div>
-                                    <span className="text-xs text-gray-500 dark:text-neutral-400">
+                                    <span className="text-[11px] text-utility-muted">
                                       {items.length}
                                     </span>
                                   </div>
@@ -227,7 +227,7 @@ export default function AnalysisTile({
                                         [key]: !s[key],
                                       }))
                                     }
-                                    className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200"
+                                    className="flex items-center gap-1 text-[11px] text-utility-muted hover:text-utility-text"
                                   >
                                     <CodeBracketIcon className="h-3 w-3" />
                                     {hiddenJson[key]
@@ -236,7 +236,7 @@ export default function AnalysisTile({
                                   </button>
 
                                   {!hiddenJson[key] && (
-                                    <pre className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-md p-2 text-[11px] font-mono overflow-x-auto text-gray-800 dark:text-neutral-200">
+                                    <pre className="bg-utility-code border border-utility-border p-2 text-[11px] font-mono overflow-x-auto text-utility-code-text">
 {JSON.stringify(
   {
     type: sample.type,
@@ -259,7 +259,7 @@ export default function AnalysisTile({
                                           f.relatedRequestId &&
                                           onSelectRequest(f.relatedRequestId)
                                         }
-                                        className="block w-full text-left text-xs text-gray-700 hover:text-blue-600 dark:text-neutral-300 dark:hover:text-blue-200"
+                                        className="block w-full text-left text-[13px] text-utility-text hover:text-utility-accent"
                                       >
                                         <Tooltip label={f.description}>
                                           <span>{msg}</span>
@@ -273,7 +273,7 @@ export default function AnalysisTile({
 
                             {/* Paging */}
                             {allGroups.length > 5 && (
-                              <div className="flex gap-3 text-xs">
+                              <div className="flex gap-3 text-[11px]">
                                 {visible < allGroups.length && (
                                   <>
                                     <button
@@ -283,7 +283,7 @@ export default function AnalysisTile({
                                           [urlKey]: visible + 5,
                                         }))
                                       }
-                                      className="text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
+                                      className="text-utility-accent hover:underline"
                                     >
                                       Show 5 more
                                     </button>
@@ -294,7 +294,7 @@ export default function AnalysisTile({
                                           [urlKey]: allGroups.length,
                                         }))
                                       }
-                                      className="text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
+                                      className="text-utility-accent hover:underline"
                                     >
                                       Show all
                                     </button>
@@ -309,7 +309,7 @@ export default function AnalysisTile({
                                         [urlKey]: 5,
                                       }))
                                     }
-                                    className="text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-neutral-100"
+                                    className="text-utility-muted hover:text-utility-text"
                                   >
                                     Show less
                                   </button>
@@ -377,7 +377,7 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-[10px] text-gray-700 dark:text-neutral-200 shadow-sm"
+            className="pointer-events-none fixed z-[1000] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-none bg-black dark:bg-neutral-800 px-2 py-1 text-[11px] font-mono text-white dark:text-neutral-100"
             style={{ left: pos.left, top: pos.top - 8 }}
           >
             {label}
