@@ -77,14 +77,14 @@ export function getStatusStyle(status: string) {
 export function getStatusText(status: string) {
   switch (status) {
     case '2xx':
-      return 'text-emerald-700 dark:text-emerald-200';
+      return 'text-utility-success';
     case '3xx':
-      return 'text-blue-700 dark:text-blue-200';
+      return 'text-utility-accent';
     case '4xx':
-      return 'text-amber-700 dark:text-amber-200';
+      return 'text-utility-warning';
     case '5xx':
-      return 'text-red-700 dark:text-red-200';
+      return 'text-utility-error';
     default:
-      return 'text-gray-900 dark:text-neutral-200';
+      return 'text-utility-text';
   }
 }

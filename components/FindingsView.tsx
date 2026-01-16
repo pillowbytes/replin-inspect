@@ -2,6 +2,8 @@
 
 import { Finding, HarRequest } from '@/types';
 import { buildFindingsViewModel } from '@/lib/utils/findingsView';
+import { getMethodStyle } from '@/lib/utils/filterStyles';
+import { useMemo } from 'react';
 
 interface FindingsViewProps {
   findings: Finding[];
@@ -18,91 +20,96 @@ export default function FindingsView({
     findings,
     requests
   );
-  const topCauseSlots = Array.from({ length: 4 }, (_, idx) => topCauses[idx]);
+  const reqById = useMemo(
+    () => new Map(requests.map((r) => [r.id, r])),
+    [requests],
+  );
 
   if (findings.length === 0) {
     return (
-      <div className="border border-gray-200 dark:border-neutral-800 rounded-xl p-6 text-sm text-gray-600 dark:text-neutral-300 bg-white dark:bg-neutral-900">
+      <div className="border border-utility-border p-4 text-[13px] text-utility-muted">
         No findings detected for this analysis.
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 w-full min-w-0 max-w-full">
+    <div className="space-y-6 w-full min-w-0 max-w-full p-3">
       {/* Top causes */}
       <div className="space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
-          Top causes
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-full">
-          {topCauseSlots.map((cause, index) =>
-            cause ? (
+        <div className="utility-label">Top causes</div>
+        <div className="space-y-2">
+          {topCauses.map((cause) => {
+            const sample = cause.sampleRequestId
+              ? reqById.get(cause.sampleRequestId)
+              : undefined;
+            return (
               <button
                 key={cause.type}
                 onClick={() =>
-                  cause.sampleRequestId &&
-                  onSelectRequest(cause.sampleRequestId)
+                  cause.sampleRequestId && onSelectRequest(cause.sampleRequestId)
                 }
-                className="text-left border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-white dark:bg-neutral-900 hover:bg-gray-50 dark:hover:bg-neutral-800 w-full min-w-0 max-w-full"
+                className="relative w-full text-left border-b border-utility-border py-2 pl-3"
               >
-                <div className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
-                  {cause.title}
+                <span
+                  className={`signal-bar ${
+                    cause.severity === 'critical'
+                      ? 'bg-utility-error'
+                      : cause.severity === 'warning'
+                      ? 'bg-utility-warning'
+                      : 'bg-utility-border'
+                  }`}
+                />
+                <div className="flex items-center justify-between gap-4">
+                  <div className="text-[13px] font-medium text-utility-text">
+                    {cause.title}
+                  </div>
+                  <div className="text-[11px] text-utility-muted font-mono">
+                    {cause.count} affected
+                  </div>
                 </div>
-                <div className="text-xs text-gray-600 dark:text-neutral-300 mt-1 break-words">
+                <div className="text-[11px] text-utility-muted mt-1 break-words">
                   {cause.summary}
                 </div>
-                {cause.confidence && (
-                  <div className="text-[11px] text-gray-500 dark:text-neutral-400 mt-1">
-                    Confidence: {cause.confidence}
+                {sample && (
+                  <div className="text-[11px] font-mono text-utility-muted mt-1 truncate">
+                    {sample.method} {sample.status} {sample.path ?? sample.url}
                   </div>
                 )}
-                {cause.evidence.length > 0 && (
-                  <div className="mt-2 text-xs text-gray-500 dark:text-neutral-400 break-words">
-                    {cause.evidence.join(' · ')}
-                  </div>
-                )}
-                <div className="mt-3 text-[11px] text-gray-400 dark:text-neutral-500">
-                  {cause.count} affected requests
-                </div>
               </button>
-            ) : (
-              <div
-                key={`placeholder-${index}`}
-                aria-hidden="true"
-                className="border border-gray-200 rounded-xl p-4 bg-white opacity-0 pointer-events-none w-full min-w-0 max-w-full"
-              />
-            ),
-          )}
+            );
+          })}
         </div>
       </div>
 
       {/* Affected requests */}
       <div className="space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
-          Affected requests
-        </div>
-        <div className="space-y-2 w-full max-w-full">
+        <div className="utility-label">Affected requests</div>
+        <div className="space-y-0 w-full max-w-full">
           {affectedRequests.map((item) => (
             <button
               key={item.requestId}
               onClick={() => onSelectRequest(item.requestId)}
-              className="w-full text-left border border-gray-200 dark:border-neutral-800 rounded-xl p-4 bg-gray-50 dark:bg-neutral-900/60 hover:bg-gray-100 dark:hover:bg-neutral-800 min-w-0 max-w-full"
+              className="relative w-full text-left border-b border-utility-border h-[32px] px-3 flex items-center gap-3 hover:bg-utility-sidebar min-w-0 max-w-full"
             >
-              <div className="text-sm font-medium text-gray-800 dark:text-neutral-100 break-words">
-                <span className="font-method">{item.method}</span>{' '}
-                <span className="text-xs text-gray-600 dark:text-neutral-300">
-                  {item.path ?? item.url}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 dark:text-neutral-400 mt-1 break-words">
+              <span
+                className={`signal-bar ${
+                  item.severity === 'critical'
+                    ? 'bg-utility-error'
+                    : item.severity === 'warning'
+                    ? 'bg-utility-warning'
+                    : 'bg-utility-border'
+                }`}
+              />
+              <span className={`text-[13px] font-bold font-mono ${getMethodStyle(item.method).text}`}>
+                {item.method}
+              </span>
+              <span className="text-[13px] font-mono text-utility-text">
                 {item.causeTitle}
-              </div>
-              {item.evidence.length > 0 && (
-                <div className="mt-2 text-xs text-gray-500 dark:text-neutral-400 break-words">
-                  {item.evidence.join(' · ')}
-                </div>
-              )}
+              </span>
+              <span className="truncate text-[11px] font-mono text-utility-muted">
+                {item.path ?? item.url}
+              </span>
             </button>
           ))}
         </div>

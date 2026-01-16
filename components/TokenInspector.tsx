@@ -25,12 +25,13 @@ export default function TokenInspector({ onDecoded }: TokenInspectorProps) {
   };
 
   return (
-    <div>
-      <label>Paste JWT token</label>
+    <div className="space-y-2">
+      <label className="utility-label">Paste JWT token</label>
       <textarea
         value={value}
         onChange={handleChange}
         placeholder="Paste JWT here"
+        className="w-full h-28 border border-utility-border bg-utility-main text-utility-text placeholder:text-utility-muted p-3 text-[13px] font-mono"
       />
     </div>
   );
