@@ -3,6 +3,7 @@
 import { Finding, HarRequest, HarTimings } from '@/types';
 import { getMethodStyle, getStatusText } from '@/lib/utils/filterStyles';
 import { ChevronDownIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import BodyViewer from '@/components/BodyViewer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -163,6 +164,34 @@ function OverviewTab({
           </button>
         </div>
       </div>
+
+      <div className="space-y-2">
+        <div className="text-[12px] font-semibold uppercase tracking-wide text-utility-text">
+          Body samples
+        </div>
+        <div className="space-y-4">
+          <BodyViewer
+            body={`{"status":"ok","count":3,"items":[{"id":1,"name":"alpha"},{"id":2,"name":"beta"}]}`}
+            mimeType="application/json"
+          />
+          <BodyViewer
+            body="name=Replin%20Inspect&mode=local&count=42"
+            mimeType="application/x-www-form-urlencoded"
+          />
+          <BodyViewer
+            body="<note><to>Support</to><from>Replin</from><body>Sample XML payload</body></note>"
+            mimeType="application/xml"
+          />
+          <BodyViewer
+            body="<!doctype html><html><body><h1>Hello</h1><p>Sample HTML response</p></body></html>"
+            mimeType="text/html"
+          />
+          <BodyViewer
+            body="Plain text payload with a few lines.\nSecond line.\nThird line."
+            mimeType="text/plain"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -199,6 +228,7 @@ function RequestTab({
         mimeType={request.requestBody?.mimeType}
         size={request.sizes?.requestBody}
         body={request.requestBody?.text}
+        contentType={request.headers?.['content-type']}
       />
 
       <HeadersTab title="Request headers" headers={request.headers} />
@@ -242,6 +272,7 @@ function ResponseTab({
         encoding={request.responseBody?.encoding}
         size={request.sizes?.responseBody}
         body={request.responseBody?.text}
+        contentType={request.responseHeaders?.['content-type']}
       />
 
       <HeadersTab title="Response headers" headers={request.responseHeaders} />
@@ -259,15 +290,15 @@ function BodySection({
   encoding,
   size,
   body,
+  contentType,
 }: {
   title: string;
   mimeType?: string;
   encoding?: string;
   size?: number;
   body?: string;
+  contentType?: string;
 }) {
-  const [open, setOpen] = useState(false);
-
   if (!body) {
     return (
       <Section title={title}>
@@ -284,19 +315,7 @@ function BodySection({
         <KeyValue label="Size" value={formatBytes(size)} />
       </DenseGrid>
 
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-[13px] text-utility-muted hover:text-utility-text"
-      >
-        <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-        View body
-      </button>
-
-      {open && (
-        <pre className="mt-2 max-h-64 overflow-x-auto bg-utility-code border border-utility-border p-3 text-[12px] font-mono text-utility-code-text">
-          {body}
-        </pre>
-      )}
+      <BodyViewer body={body} mimeType={mimeType} contentType={contentType} />
     </Section>
   );
 }
