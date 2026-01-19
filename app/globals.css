@@ -15,6 +15,15 @@
   --alert-bg: #f1f5f9;
   --code-bg: #f1f5f9;
   --code-text: #0f172a;
+  --syntax-key: #0451a5;
+  --syntax-string: #a31515;
+  --syntax-number: #098658;
+  --syntax-boolean: #0000ff;
+  --syntax-null: #795e26;
+  --syntax-punct: #6b7280;
+  --syntax-tag: #800000;
+  --syntax-attr: #001080;
+  --syntax-attr-value: #a31515;
 }
 
 .dark {
@@ -30,6 +39,15 @@
   --alert-bg: #161616;
   --code-bg: #0a0a0a;
   --code-text: #f9fafb;
+  --syntax-key: #9cdcfe;
+  --syntax-string: #ce9178;
+  --syntax-number: #b5cea8;
+  --syntax-boolean: #c586c0;
+  --syntax-null: #c586c0;
+  --syntax-punct: #9ca3af;
+  --syntax-tag: #569cd6;
+  --syntax-attr: #9cdcfe;
+  --syntax-attr-value: #ce9178;
 }
 
 @theme inline {
@@ -145,5 +163,43 @@ pre {
 
   .signal-bar {
     @apply w-[2px] h-full absolute left-0 top-0;
+  }
+}
+
+@layer utilities {
+  .token-key {
+    color: var(--syntax-key) !important;
+  }
+
+  .token-string {
+    color: var(--syntax-string) !important;
+  }
+
+  .token-number {
+    color: var(--syntax-number) !important;
+  }
+
+  .token-boolean {
+    color: var(--syntax-boolean) !important;
+  }
+
+  .token-null {
+    color: var(--syntax-null) !important;
+  }
+
+  .token-punct {
+    color: var(--syntax-punct) !important;
+  }
+
+  .token-tag {
+    color: var(--syntax-tag) !important;
+  }
+
+  .token-attr {
+    color: var(--syntax-attr) !important;
+  }
+
+  .token-attr-value {
+    color: var(--syntax-attr-value) !important;
   }
 }
