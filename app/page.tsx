@@ -672,7 +672,9 @@ function Tooltip({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [clampedLeft, setClampedLeft] = useState<number | null>(null);
   const [placement, setPlacement] = useState<'top' | 'bottom'>('top');
+  const tooltipRef = useRef<HTMLSpanElement | null>(null);
 
   const updatePosition = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -696,6 +698,23 @@ function Tooltip({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !pos) {
+      setClampedLeft(null);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const width = tooltipRef.current?.offsetWidth ?? 0;
+      if (!width) return;
+      const padding = 8;
+      const minLeft = padding + width / 2;
+      const maxLeft = window.innerWidth - padding - width / 2;
+      const nextLeft = Math.min(Math.max(pos.left, minLeft), maxLeft);
+      setClampedLeft(nextLeft);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, pos]);
+
   return (
     <span
       ref={triggerRef}
@@ -711,10 +730,14 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className={`pointer-events-none fixed z-[1000] -translate-x-1/2 whitespace-nowrap rounded-none bg-black dark:bg-neutral-800 px-2 py-1 text-[11px] font-mono text-white dark:text-neutral-100 ${
+            ref={tooltipRef}
+            className={`pointer-events-none fixed z-[1000] -translate-x-1/2 whitespace-nowrap rounded-none border border-utility-border bg-[#EFF6FF] dark:bg-utility-sidebar px-2 py-1 text-[11px] font-mono text-utility-muted ${
               placement === 'top' ? '-translate-y-full' : 'translate-y-0'
             }`}
-            style={{ left: pos.left, top: placement === 'top' ? pos.top - 8 : pos.top + 8 }}
+            style={{
+              left: clampedLeft ?? pos.left,
+              top: placement === 'top' ? pos.top - 8 : pos.top + 8,
+            }}
           >
             {label}
           </span>,

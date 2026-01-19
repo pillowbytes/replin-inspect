@@ -108,7 +108,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
             {copied ? 'Copied' : 'Copy'}
           </button>
           {copied && (
-            <span className="pointer-events-none absolute right-0 -top-7 whitespace-nowrap rounded-none bg-black px-2 py-1 text-[10px] font-mono text-white">
+            <span className="pointer-events-none absolute right-0 -top-7 whitespace-nowrap rounded-none border border-utility-border bg-[#EFF6FF] dark:bg-utility-sidebar px-2 py-1 text-[10px] font-mono text-utility-muted">
               Copied
             </span>
           )}
