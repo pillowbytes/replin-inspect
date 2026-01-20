@@ -37,6 +37,7 @@ type GuideTab = 'chrome' | 'edge' | 'firefox' | 'safari';
 
 export default function HomePage() {
   const [analysisStarted, setAnalysisStarted] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
   const [mode, setMode] = useState<AnalysisMode>('network');
   const [theme, setTheme] = useState<ThemePreference>('system');
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -63,6 +64,8 @@ export default function HomePage() {
   const [selectedResourceTypes, setSelectedResourceTypes] = useState<Set<
     'fetch-xhr' | 'js' | 'css' | 'websocket'
   >>(new Set());
+  const overlayStartRef = useRef<number | null>(null);
+  const overlayTimeoutRef = useRef<number | null>(null);
 
   const findings = useMemo(() => {
     if (!analysisStarted) return [];
@@ -104,6 +107,24 @@ export default function HomePage() {
     setRequests(parsed);
     setAnalysisStarted(true);
     setSelectedRequestId(null);
+  };
+
+  const handleParseStart = () => {
+    if (overlayTimeoutRef.current) {
+      window.clearTimeout(overlayTimeoutRef.current);
+    }
+    overlayStartRef.current = Date.now();
+    setShowOverlay(true);
+  };
+
+  const handleParseEnd = () => {
+    const startedAt = overlayStartRef.current ?? Date.now();
+    const elapsed = Date.now() - startedAt;
+    const remaining = 0;
+    overlayTimeoutRef.current = window.setTimeout(() => {
+      setShowOverlay(false);
+      overlayTimeoutRef.current = null;
+    }, remaining);
   };
 
   const handleDecoded = (token: TokenInfo | null) => {
@@ -336,7 +357,13 @@ export default function HomePage() {
               <section className="flex items-center justify-center p-8">
                 <div className="w-full max-w-[980px] flex items-center justify-center">
                   <div className="space-y-4">
-                    {mode === 'network' && <UploadArea onParsed={handleParsed} />}
+                    {mode === 'network' && (
+                      <UploadArea
+                        onParsed={handleParsed}
+                        onParseStart={handleParseStart}
+                        onParseEnd={handleParseEnd}
+                      />
+                    )}
                     {mode === 'token' && <TokenInspector onDecoded={handleDecoded} />}
                   </div>
                 </div>
@@ -606,6 +633,20 @@ export default function HomePage() {
           </>
         )}
       </main>
+
+      <div
+        className={`fixed inset-0 z-[2000] flex items-center justify-center bg-black/20 dark:bg-black/40 transition-opacity duration-300 ${
+          showOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        aria-hidden={!showOverlay}
+      >
+        <div className="flex flex-col items-center gap-3 text-utility-text">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-utility-border border-t-utility-accent" />
+          <div className="text-[12px] font-mono uppercase tracking-wide text-utility-muted">
+            Analyzing HAR…
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
