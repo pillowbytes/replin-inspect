@@ -12,22 +12,41 @@ import {
   ExclamationTriangleIcon,
   LockClosedIcon,
 } from '@heroicons/react/24/outline';
-import { ChangeEvent, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 
 interface UploadAreaProps {
   onParsed: (requests: HarRequest[]) => void;
+  onParseStart?: () => void;
+  onParseEnd?: () => void;
 }
 
-export default function UploadArea({ onParsed }: UploadAreaProps) {
+export default function UploadArea({
+  onParsed,
+  onParseStart,
+  onParseEnd,
+}: UploadAreaProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [pasteValue, setPasteValue] = useState('');
+  const pickerOpenRef = useRef(false);
+
+  const handlePickFile = () => {
+    if (isLoading) return;
+    pickerOpenRef.current = true;
+    onParseStart?.();
+    inputRef.current?.click();
+  };
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      pickerOpenRef.current = false;
+      onParseEnd?.();
+      return;
+    }
 
     setIsLoading(true);
+    onParseStart?.();
 
     try {
       const requests = await parseHar(file);
@@ -37,6 +56,8 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
       alert('There was a problem parsing the HAR file.');
     } finally {
       setIsLoading(false);
+      pickerOpenRef.current = false;
+      onParseEnd?.();
       // Reset input so the same file can be uploaded again later if needed
       if (inputRef.current) {
         inputRef.current.value = '';
@@ -47,6 +68,7 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
   const handlePasteSubmit = async () => {
     if (!pasteValue.trim()) return;
     setIsLoading(true);
+    onParseStart?.();
     try {
       const file = new File([pasteValue], 'pasted.har', {
         type: 'application/json',
@@ -59,8 +81,19 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
       alert('There was a problem parsing the HAR content.');
     } finally {
       setIsLoading(false);
+      onParseEnd?.();
     }
   };
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (!pickerOpenRef.current || isLoading) return;
+      pickerOpenRef.current = false;
+      onParseEnd?.();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isLoading, onParseEnd]);
 
   return (
     <div className="w-full max-w-[560px] space-y-6">
@@ -82,12 +115,12 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
           <div className="text-[14px] text-utility-muted max-w-[400px]">
             Click to open the file picker and select your HAR file for local inspection.
           </div>
-          <button
-            type="button"
-            onClick={() => !isLoading && inputRef.current?.click()}
-            className="h-10 px-5 rounded-[4px] bg-utility-accent dark:bg-[#0EA5E9] text-white flex items-center gap-2 transition-transform duration-150 active:scale-[0.97]"
-            disabled={isLoading}
-          >
+        <button
+          type="button"
+          onClick={handlePickFile}
+          className="h-10 px-5 rounded-[4px] bg-utility-accent dark:bg-[#0EA5E9] text-white flex items-center gap-2 transition-transform duration-150 active:scale-[0.97]"
+          disabled={isLoading}
+        >
             <PlusIcon className="h-4 w-4" />
             {isLoading ? 'Uploading…' : 'HAR'}
           </button>
@@ -122,7 +155,10 @@ export default function UploadArea({ onParsed }: UploadAreaProps) {
           />
           <button
             type="button"
-            onClick={handlePasteSubmit}
+            onClick={() => {
+              onParseStart?.();
+              handlePasteSubmit();
+            }}
             className="h-10 px-5 rounded-[4px] bg-utility-accent dark:bg-[#0EA5E9] text-white flex items-center gap-2 justify-center mx-auto transition-transform duration-150 active:scale-[0.97]"
             disabled={isLoading || !pasteValue.trim()}
           >
