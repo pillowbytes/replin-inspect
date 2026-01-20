@@ -32,6 +32,9 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
       if (bodyKind === 'form') {
         return formatForm(body);
       }
+      if (bodyKind === 'javascript') {
+        return formatJavascript(body);
+      }
       if (bodyKind === 'xml' || bodyKind === 'html') {
         return formatXml(body);
       }
@@ -48,6 +51,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
       if (bodyKind === 'json') return highlightJson(pretty);
       if (bodyKind === 'form') return highlightForm(pretty);
       if (bodyKind === 'xml' || bodyKind === 'html') return highlightMarkup(pretty);
+      if (bodyKind === 'javascript') return highlightJavascript(pretty);
       return null;
     }
 
@@ -55,6 +59,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
       if (bodyKind === 'json') return highlightJson(display);
       if (bodyKind === 'form') return highlightFormRaw(display);
       if (bodyKind === 'xml' || bodyKind === 'html') return highlightMarkup(display);
+      if (bodyKind === 'javascript') return highlightJavascript(display);
     }
 
     return null;
@@ -150,6 +155,7 @@ type BodyKind =
   | 'form'
   | 'xml'
   | 'html'
+  | 'javascript'
   | 'text'
   | 'text-json'
   | 'multipart'
@@ -161,15 +167,24 @@ function detectBodyKind(body: string, mimeType?: string, contentType?: string): 
   if (type.includes('application/x-www-form-urlencoded')) return 'form';
   if (type.includes('multipart/form-data')) return 'multipart';
   if (type.includes('text/html')) return 'html';
+  if (
+    type.includes('application/javascript') ||
+    type.includes('text/javascript') ||
+    type.includes('application/ecmascript')
+  ) {
+    return 'javascript';
+  }
   if (type.includes('xml')) return 'xml';
   if (type.includes('text/plain')) {
     const trimmed = body.trim();
     if (looksLikeJson(trimmed)) return 'text-json';
+    if (looksLikeForm(trimmed)) return 'form';
     return 'text';
   }
 
   const trimmed = body.trim();
   if (looksLikeJson(trimmed)) return 'json';
+  if (looksLikeJavascript(trimmed)) return 'javascript';
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
       JSON.parse(body);
@@ -183,12 +198,13 @@ function detectBodyKind(body: string, mimeType?: string, contentType?: string): 
     return 'xml';
   }
   if (/<[a-zA-Z][^>]*>/.test(trimmed)) {
+    if (looksLikeJavascript(trimmed)) return 'javascript';
     if (trimmed.toLowerCase().includes('<!doctype') || trimmed.toLowerCase().includes('<html')) {
       return 'html';
     }
     return 'xml';
   }
-  if (trimmed.includes('=') && trimmed.includes('&')) return 'form';
+  if (looksLikeForm(trimmed)) return 'form';
   return 'text';
 }
 
@@ -202,6 +218,8 @@ function formatKindLabel(kind: BodyKind) {
       return 'XML';
     case 'html':
       return 'HTML';
+    case 'javascript':
+      return 'JAVASCRIPT';
     case 'multipart':
       return 'MULTIPART';
     case 'text':
@@ -225,6 +243,24 @@ function looksLikeJson(trimmed: string) {
   return false;
 }
 
+function looksLikeForm(trimmed: string) {
+  if (!trimmed.includes('=')) return false;
+  if (trimmed.includes('<') || trimmed.includes('{') || trimmed.includes('[')) return false;
+  return true;
+}
+
+function looksLikeJavascript(trimmed: string) {
+  if (!trimmed) return false;
+  if (trimmed.startsWith('function') || trimmed.startsWith('(') || trimmed.startsWith('=>')) {
+    return true;
+  }
+  return Boolean(
+    trimmed.match(
+      /\b(function|const|let|var|import|export|return|async|await|class|=>)\b/
+    )
+  );
+}
+
 function extractJson(body: string) {
   const trimmed = body.trim();
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) return trimmed;
@@ -239,6 +275,23 @@ function formatForm(body: string) {
   for (const [key, value] of params.entries()) {
     lines.push(`${key}: ${value}`);
   }
+  if (lines.length > 0) return lines.join('\n');
+  return formatFormFallback(body);
+}
+
+function formatFormFallback(body: string) {
+  const parts = body.split('&');
+  const lines = parts
+    .map((part) => {
+      const [rawKey, rawValue] = part.split('=');
+      if (!rawKey) return null;
+      const key = decodeURIComponent(rawKey.replace(/\+/g, ' '));
+      const value = rawValue
+        ? decodeURIComponent(rawValue.replace(/\+/g, ' '))
+        : '';
+      return `${key}: ${value}`;
+    })
+    .filter(Boolean) as string[];
   return lines.length > 0 ? lines.join('\n') : body;
 }
 
@@ -263,7 +316,17 @@ function formatXml(body: string) {
 
 type HighlightToken = {
   value: string;
-  type: 'string' | 'number' | 'boolean' | 'null' | 'punct';
+  type:
+    | 'string'
+    | 'number'
+    | 'boolean'
+    | 'null'
+    | 'keyword'
+    | 'comment'
+    | 'function'
+    | 'class'
+    | 'property'
+    | 'punct';
   start: number;
   end: number;
 };
@@ -529,4 +592,289 @@ function renderTag(tag: string, offset: number) {
   );
 
   return parts;
+}
+
+function highlightJavascript(source: string) {
+  const tokens: HighlightToken[] = [];
+  const regex =
+    /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:break|case|catch|class|const|continue|debugger|default|delete|do|else|export|extends|finally|for|function|if|import|in|instanceof|let|new|return|super|switch|this|throw|try|typeof|var|void|while|with|yield|async|await)\b|\b(?:true|false)\b|\b(?:null|undefined)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\]();,.:=<>+\-*/%!?&|^~]/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(source))) {
+    const value = match[0];
+    let type: HighlightToken['type'] = 'punct';
+    if (value.startsWith('//') || value.startsWith('/*')) type = 'comment';
+    else if (value.startsWith('"') || value.startsWith("'") || value.startsWith('`'))
+      type = 'string';
+    else if (value === 'true' || value === 'false') type = 'boolean';
+    else if (value === 'null' || value === 'undefined') type = 'null';
+    else if (value.match(/^-?\d/)) type = 'number';
+    else if (
+      value.match(
+        /^(break|case|catch|class|const|continue|debugger|default|delete|do|else|export|extends|finally|for|function|if|import|in|instanceof|let|new|return|super|switch|this|throw|try|typeof|var|void|while|with|yield|async|await)$/
+      )
+    )
+      type = 'keyword';
+    tokens.push({ value, type, start: match.index, end: match.index + value.length });
+  }
+
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+
+  tokens.forEach((token, index) => {
+    if (token.start > lastIndex) {
+      nodes.push(source.slice(lastIndex, token.start));
+    }
+
+    const nextToken = tokens[index + 1];
+    const nextValue = nextToken?.value ?? '';
+
+    if (token.type === 'keyword') {
+      if (token.value === 'class' && nextToken?.type === 'punct' && nextValue === ' ') {
+        nodes.push(
+          <span key={`js-key-${token.start}`} className="token-keyword">
+            {token.value}
+          </span>
+        );
+      } else {
+        nodes.push(
+          <span key={`js-key-${token.start}`} className="token-keyword">
+            {token.value}
+          </span>
+        );
+      }
+    } else if (token.type === 'string') {
+      nodes.push(
+        <span key={`js-str-${token.start}`} className="token-string">
+          {token.value}
+        </span>
+      );
+    } else if (token.type === 'number') {
+      nodes.push(
+        <span key={`js-num-${token.start}`} className="token-number">
+          {token.value}
+        </span>
+      );
+    } else if (token.type === 'boolean') {
+      nodes.push(
+        <span key={`js-bool-${token.start}`} className="token-boolean">
+          {token.value}
+        </span>
+      );
+    } else if (token.type === 'null') {
+      nodes.push(
+        <span key={`js-null-${token.start}`} className="token-null">
+          {token.value}
+        </span>
+      );
+    } else if (token.type === 'comment') {
+      nodes.push(
+        <span key={`js-com-${token.start}`} className="token-comment">
+          {token.value}
+        </span>
+      );
+    } else {
+      nodes.push(
+        <span key={`js-punct-${token.start}`} className="token-punct">
+          {token.value}
+        </span>
+      );
+    }
+
+    lastIndex = token.end;
+  });
+
+  if (lastIndex < source.length) {
+    nodes.push(source.slice(lastIndex));
+  }
+
+  return applyIdentifierHighlights(nodes);
+}
+
+function applyIdentifierHighlights(nodes: ReactNode[]) {
+  const asString = nodes
+    .map((n) => (typeof n === 'string' ? n : '\u0000'))
+    .join('');
+  if (!asString.includes('\u0000')) return nodes;
+
+  const output: ReactNode[] = [];
+  let buffer = '';
+  const flush = () => {
+    if (!buffer) return;
+    output.push(...highlightIdentifiersInText(buffer));
+    buffer = '';
+  };
+
+  nodes.forEach((node) => {
+    if (typeof node === 'string') {
+      buffer += node;
+    } else {
+      flush();
+      output.push(node);
+    }
+  });
+  flush();
+
+  return output;
+}
+
+function highlightIdentifiersInText(text: string) {
+  const nodes: ReactNode[] = [];
+  const regex = /\b([A-Za-z_$][\w$]*)(\s*)(\(|:)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text))) {
+    const [full, name, spacing, suffix] = match;
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const type = suffix === '(' ? 'token-function' : 'token-property';
+    nodes.push(
+      <span key={`js-ident-${match.index}`} className={type}>
+        {name}
+      </span>
+    );
+    nodes.push(spacing);
+    nodes.push(suffix);
+
+    lastIndex = match.index + full.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
+function formatJavascript(source: string) {
+  const input = source.trim();
+  let out = '';
+  let indent = 0;
+  let inSingle = false;
+  let inDouble = false;
+  let inTemplate = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escapeNext = false;
+
+  const writeIndent = () => {
+    out += '  '.repeat(indent);
+  };
+
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    const next = input[i + 1];
+
+    if (inLineComment) {
+      out += char;
+      if (char === '\n') {
+        inLineComment = false;
+        writeIndent();
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      out += char;
+      if (char === '*' && next === '/') {
+        out += '/';
+        i += 1;
+        inBlockComment = false;
+      }
+      continue;
+    }
+
+    if (escapeNext) {
+      out += char;
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\' && (inSingle || inDouble || inTemplate)) {
+      out += char;
+      escapeNext = true;
+      continue;
+    }
+
+    if (!inDouble && !inTemplate && char === "'" && !inSingle) {
+      inSingle = true;
+      out += char;
+      continue;
+    }
+    if (inSingle && char === "'") {
+      inSingle = false;
+      out += char;
+      continue;
+    }
+    if (!inSingle && !inTemplate && char === '"' && !inDouble) {
+      inDouble = true;
+      out += char;
+      continue;
+    }
+    if (inDouble && char === '"') {
+      inDouble = false;
+      out += char;
+      continue;
+    }
+    if (!inSingle && !inDouble && char === '`' && !inTemplate) {
+      inTemplate = true;
+      out += char;
+      continue;
+    }
+    if (inTemplate && char === '`') {
+      inTemplate = false;
+      out += char;
+      continue;
+    }
+
+    if (!inSingle && !inDouble && !inTemplate) {
+      if (char === '/' && next === '/') {
+        inLineComment = true;
+        out += char;
+        continue;
+      }
+      if (char === '/' && next === '*') {
+        inBlockComment = true;
+        out += char;
+        continue;
+      }
+
+      if (char === '{') {
+        out += '{\n';
+        indent += 1;
+        writeIndent();
+        continue;
+      }
+      if (char === '}') {
+        out = out.trimEnd();
+        out += '\n';
+        indent = Math.max(indent - 1, 0);
+        writeIndent();
+        out += '}';
+        if (next && next !== ';' && next !== ',' && next !== ')') {
+          out += '\n';
+          writeIndent();
+        }
+        continue;
+      }
+      if (char === ';') {
+        out += ';\n';
+        writeIndent();
+        continue;
+      }
+      if (char === '\n' || char === '\r' || char === '\t') {
+        if (!out.endsWith('\n')) {
+          out += '\n';
+          writeIndent();
+        }
+        continue;
+      }
+    }
+
+    out += char;
+  }
+
+  return out.trimEnd();
 }

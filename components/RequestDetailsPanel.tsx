@@ -27,6 +27,7 @@ export default function RequestDetailsPanel({
   findings = [],
 }: RequestDetailsPanelProps) {
   const [tab, setTab] = useState<Tab>('overview');
+  const [copyNotice, setCopyNotice] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const requestFindings = useMemo(() => findings ?? [], [findings]);
   const findingsByContext = useMemo(
@@ -73,7 +74,17 @@ export default function RequestDetailsPanel({
         className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-5 text-[13px] text-utility-text thin-scrollbar"
       >
         {tab === 'overview' && (
-          <OverviewTab request={request} findings={requestFindings} />
+        <OverviewTab
+          request={request}
+          findings={requestFindings}
+          copyNotice={copyNotice}
+          onCopy={() => {
+            navigator.clipboard.writeText(request.url).then(() => {
+              setCopyNotice(true);
+              window.setTimeout(() => setCopyNotice(false), 1600);
+            });
+          }}
+        />
         )}
         {tab === 'request' && (
           <RequestTab request={request} findings={findingsByContext.request} />
@@ -96,9 +107,13 @@ export default function RequestDetailsPanel({
 function OverviewTab({
   request,
   findings,
+  copyNotice,
+  onCopy,
 }: {
   request: HarRequest;
   findings: Finding[];
+  copyNotice: boolean;
+  onCopy: () => void;
 }) {
   const alertFindings = findings.filter((f) => f.severity !== 'info');
   const referrerPolicy =
@@ -158,38 +173,14 @@ function OverviewTab({
           <KeyValue label="Wire protocol" value={wireProtocol} />
         </DenseGrid>
         <div className="flex justify-center">
-          <button className="utility-button-ghost flex items-center justify-center gap-2 px-5 font-bold">
+          <button
+            className="utility-button-ghost flex items-center justify-center gap-2 px-5 font-bold"
+            onClick={onCopy}
+            type="button"
+          >
             <DocumentDuplicateIcon className="h-4 w-4" />
-            Copy URL
+            {copyNotice ? 'Copied' : 'Copy URL'}
           </button>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <div className="text-[12px] font-semibold uppercase tracking-wide text-utility-text">
-          Body samples
-        </div>
-        <div className="space-y-4">
-          <BodyViewer
-            body={`{"status":"ok","count":3,"items":[{"id":1,"name":"alpha"},{"id":2,"name":"beta"}]}`}
-            mimeType="application/json"
-          />
-          <BodyViewer
-            body="name=Replin%20Inspect&mode=local&count=42"
-            mimeType="application/x-www-form-urlencoded"
-          />
-          <BodyViewer
-            body="<note><to>Support</to><from>Replin</from><body>Sample XML payload</body></note>"
-            mimeType="application/xml"
-          />
-          <BodyViewer
-            body="<!doctype html><html><body><h1>Hello</h1><p>Sample HTML response</p></body></html>"
-            mimeType="text/html"
-          />
-          <BodyViewer
-            body="Plain text payload with a few lines.\nSecond line.\nThird line."
-            mimeType="text/plain"
-          />
         </div>
       </div>
     </div>
