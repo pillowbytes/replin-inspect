@@ -481,11 +481,11 @@ export default function HomePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="utility-label">Live metrics</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     <Metric label="Requests" value={`${metrics.total}`} />
-                    <Metric label="Latency" value={`${metrics.avgDuration} ms`} tone="warning" />
-                    <Metric label="Success" value={`${metrics.success}%`} tone="success" />
+                    <Metric label="Errors" value={`${metrics.failed}`} tone="danger" />
+                    <Metric label="Avg latency" value={`${metrics.avgDuration} ms`} tone="warning" />
+                    <Metric label="Warnings" value={`${findingsSummary.warning}`} tone="warning" />
                   </div>
                 </div>
 
@@ -650,10 +650,12 @@ function Metric({
 }: {
   label: string;
   value: string;
-  tone?: 'neutral' | 'warning' | 'success';
+  tone?: 'neutral' | 'warning' | 'success' | 'danger';
 }) {
   const toneClass =
-    tone === 'warning'
+    tone === 'danger'
+      ? 'text-utility-error'
+      : tone === 'warning'
       ? 'text-utility-warning'
       : tone === 'success'
       ? 'text-utility-success'
