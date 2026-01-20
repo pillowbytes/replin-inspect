@@ -381,7 +381,7 @@ export default function ResultsTable({
                   onSelectRequest?.(req.id);
                 }
               }}
-              className={`grid grid-cols-[110px_70px_70px_minmax(0,1fr)_80px_90px_200px] items-center px-3 utility-table-row cursor-pointer focus:outline-none ${
+              className={`grid grid-cols-[110px_70px_70px_minmax(0,1fr)_80px_90px_200px] items-center px-3 utility-table-row h-[36px] cursor-pointer focus:outline-none ${
                 selected
                   ? 'bg-utility-selection outline outline-1 outline-utility-border -outline-offset-1'
                   : ''
@@ -435,7 +435,7 @@ export default function ResultsTable({
               {/* Timing */}
               <div className="flex items-center justify-end">
                 {timingItems.length > 0 ? (
-                  <div className="h-2 w-full bg-utility-border flex overflow-hidden">
+                  <div className="h-4 w-full bg-utility-border flex overflow-hidden">
                     {timingItems.map((t) => {
                       const label = `${t.key} (${t.value} ms)`;
                       const width = Math.max(1, (t.value / timingTotal) * 100);
