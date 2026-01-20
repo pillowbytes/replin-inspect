@@ -294,7 +294,7 @@ export default function HomePage() {
               {analysisStarted && (
                 <button
                   onClick={handleNewAnalysis}
-                  className="utility-button-primary flex items-center gap-2 whitespace-nowrap text-white dark:text-[#0A0A0A] font-medium"
+                  className="utility-button-primary flex items-center gap-2 whitespace-nowrap text-white font-medium dark:bg-[#0EA5E9]"
                 >
                   <FolderPlusIcon className="h-5 w-5" />
                   New analysis
@@ -394,7 +394,7 @@ export default function HomePage() {
                       Expand to view step-by-step capture instructions.
                     </div>
                   )}
-                  <div className="border border-utility-border bg-utility-alert p-3 text-[11px] text-utility-muted">
+                  <div className="border border-utility-border bg-[#EFF6FF] dark:bg-utility-sidebar p-3 text-[11px] text-utility-muted">
                     HAR files can contain sensitive information. Replin Inspect processes everything locally.
                   </div>
                   <div className="space-y-3 text-[13px] text-utility-muted">
@@ -413,7 +413,7 @@ export default function HomePage() {
                         <span>This tool currently uses no cookies.</span>
                       </div>
                     </div>
-                    <div className="border border-utility-border bg-utility-alert px-3 py-2 text-[11px] text-utility-warning">
+                    <div className="text-[11px] text-utility-warning">
                       This app is still in development. Found an issue? Report it on{' '}
                       <a
                         href="https://github.com/pillowbytes/replin-inspect/issues"
@@ -428,7 +428,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="mt-auto border-t border-utility-border p-4">
-                  <div className="border border-utility-border bg-utility-main p-3 opacity-50">
+                  <div className="border border-utility-border bg-[#EFF6FF] dark:bg-utility-sidebar p-3 opacity-50">
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-utility-border text-utility-text">
                         Coming soon
