@@ -125,10 +125,15 @@ export function parseHar(file: File): Promise<HarRequest[]> {
 
             /* ---------- Metadata ---------- */
 
-            const resourceType =
+            const mimeType = entry.response?.content?.mimeType;
+            let resourceType =
               entry._resourceType ||
-              entry.response?.content?.mimeType?.split('/')[0] ||
+              mimeType?.split('/')[0] ||
               undefined;
+
+            if ((!resourceType || resourceType === 'other') && mimeType?.startsWith('image/')) {
+              resourceType = 'image';
+            }
 
             const fromCache = Boolean(entry.response?._fromCache);
             const serverIp =

@@ -150,11 +150,20 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
               className="h-28 w-full border border-dashed border-utility-border bg-utility-main flex items-center justify-center"
               title="Image visualization will be available soon."
             >
-              <div className="text-[10px] uppercase tracking-wide text-utility-muted">
-                Image preview placeholder
-              </div>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 120 80"
+                className="h-12 w-12 text-utility-muted"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect x="8" y="10" width="104" height="60" rx="2" />
+                <circle cx="40" cy="35" r="6" />
+                <path d="M16 60l22-18 14 12 18-16 20 22" />
+              </svg>
             </div>
-            <div className="text-[11px] font-bold uppercase tracking-wide text-utility-muted">
+            <div className="text-center text-[11px] font-bold uppercase tracking-wide text-utility-muted">
               Image visualization will be available soon.
             </div>
           </div>
