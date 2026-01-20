@@ -53,7 +53,8 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
 
   const canPretty = Boolean(pretty);
   const display = viewMode === 'pretty' && canPretty ? pretty : body;
-  const rendered = display ?? '';
+  const rawDisplay = display ?? '';
+  const rendered = rawDisplay;
   const highlighted = useMemo(() => {
     if (!colorEnabled) return null;
     if (viewMode === 'pretty' && canPretty && pretty) {
@@ -65,10 +66,10 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
     }
 
     if (viewMode === 'raw') {
-      if (bodyKind === 'json') return highlightJson(display);
-      if (bodyKind === 'form') return highlightFormRaw(display);
-      if (bodyKind === 'xml' || bodyKind === 'html') return highlightMarkup(display);
-      if (bodyKind === 'javascript') return highlightJavascript(display);
+      if (bodyKind === 'json') return highlightJson(rawDisplay);
+      if (bodyKind === 'form') return highlightFormRaw(rawDisplay);
+      if (bodyKind === 'xml' || bodyKind === 'html') return highlightMarkup(rawDisplay);
+      if (bodyKind === 'javascript') return highlightJavascript(rawDisplay);
     }
 
     return null;
@@ -76,7 +77,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(display);
+      await navigator.clipboard.writeText(rawDisplay);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
