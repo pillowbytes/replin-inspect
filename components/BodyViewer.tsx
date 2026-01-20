@@ -53,7 +53,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
 
   const canPretty = Boolean(pretty);
   const display = viewMode === 'pretty' && canPretty ? pretty : body;
-  const rendered = display;
+  const rendered = display ?? '';
   const highlighted = useMemo(() => {
     if (!colorEnabled) return null;
     if (viewMode === 'pretty' && canPretty && pretty) {
