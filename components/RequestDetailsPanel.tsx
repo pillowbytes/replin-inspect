@@ -502,11 +502,14 @@ function KeyValue({
   mono?: boolean;
   className?: string;
 }) {
+  const shouldWrap = wrap !== undefined ? wrap : true;
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       <div className="text-[11px] font-bold uppercase tracking-wide text-utility-muted">{label}</div>
       <div
-        className={`text-[13px] text-utility-text ${wrap ? 'break-all' : ''} ${
+        className={`text-[13px] text-utility-text ${
+          shouldWrap ? 'break-words whitespace-normal' : ''
+        } ${
           mono ? 'font-mono' : ''
         } ${className ?? ''}`}
       >
@@ -853,7 +856,7 @@ function formatFindingText(text: string) {
 
 function CodeWell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border border-utility-border bg-utility-code p-3 space-y-2 text-utility-code-text">
+    <div className="border border-utility-border bg-[#EFF6FF] dark:bg-utility-code p-3 space-y-2 text-utility-code-text">
       {children}
     </div>
   );

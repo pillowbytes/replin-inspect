@@ -80,7 +80,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
             disabled={!canPretty}
             className={`h-7 px-2 border border-utility-border rounded-[4px] ${
               viewMode === 'pretty'
-                ? 'text-utility-text bg-utility-selection'
+                ? 'text-utility-text bg-[#EFF6FF] dark:bg-utility-selection'
                 : 'text-utility-muted bg-transparent'
             } ${canPretty ? '' : 'opacity-50 cursor-not-allowed'}`}
           >
@@ -91,7 +91,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
             onClick={() => setViewMode('raw')}
             className={`h-7 px-2 border border-utility-border rounded-[4px] ${
               viewMode === 'raw'
-                ? 'text-utility-text bg-utility-selection'
+                ? 'text-utility-text bg-[#EFF6FF] dark:bg-utility-selection'
                 : 'text-utility-muted bg-transparent'
             }`}
           >
@@ -114,7 +114,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
           )}
         </div>
       </div>
-      <div className="border border-utility-border bg-utility-code p-3 text-utility-code-text">
+      <div className="border border-utility-border bg-[#EFF6FF] dark:bg-utility-code p-3 text-utility-code-text">
         <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-utility-muted">
           <span>{formatKindLabel(bodyKind)}</span>
           {formatInferredLabel(bodyKind) && (
@@ -135,7 +135,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="h-7 px-2 border border-utility-border rounded-[4px] text-utility-text hover:bg-utility-selection"
+            className="h-7 px-2 border border-utility-border rounded-[4px] text-utility-text hover:bg-[#EFF6FF] dark:hover:bg-utility-selection"
           >
             {expanded ? 'Show less' : 'Show more'}
           </button>

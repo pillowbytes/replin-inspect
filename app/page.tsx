@@ -58,7 +58,8 @@ export default function HomePage() {
     '2xx' | '3xx' | '4xx' | '5xx'
   >>(new Set());
   const [urlQuery, setUrlQuery] = useState('');
-  const [projectScope, setProjectScope] = useState('cloud-infra-v1');
+  const [selectedHar, setSelectedHar] = useState('har-1');
+  const harFiles = [{ id: 'har-1', label: 'HAR 1', active: true }];
   const [selectedResourceTypes, setSelectedResourceTypes] = useState<Set<
     'fetch-xhr' | 'js' | 'css' | 'websocket'
   >>(new Set());
@@ -450,23 +451,33 @@ export default function HomePage() {
             <div className="grid grid-cols-[240px_minmax(0,1fr)_400px] flex-1 min-h-0 w-full border-t border-utility-border">
               <aside className="flex flex-col gap-4 p-3 overflow-y-auto no-scrollbar bg-utility-sidebar dark:bg-utility-main border-r border-utility-border">
                 <div className="space-y-3">
-                  <div className="utility-label">Project scope</div>
-                  <select
-                    value={projectScope}
-                    onChange={(e) => setProjectScope(e.target.value)}
-                    className="h-8 w-full bg-utility-main text-[13px] font-mono text-utility-text px-2 border border-transparent focus:outline-none"
-                  >
-                    <option value="cloud-infra-v1">cloud-infra-v1</option>
-                    <option value="edge-gateway">edge-gateway</option>
-                    <option value="payments-api">payments-api</option>
-                  </select>
-                  <button
-                    onClick={handleNewAnalysis}
-                    className="utility-button-ghost h-8 w-full flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wide text-utility-muted"
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    New analysis
-                  </button>
+                  <div className="utility-label">HAR files</div>
+                  <div className="space-y-1">
+                    {harFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        className="w-full px-2 py-1 text-[13px] font-mono border-[3px] border-dotted border-utility-border bg-utility-main text-utility-accent flex items-center gap-2"
+                      >
+                        <span className="inline-flex h-3 w-3 items-center justify-center border border-utility-border bg-utility-main">
+                          {file.active && (
+                            <span className="block h-2 w-2 bg-utility-accent" />
+                          )}
+                        </span>
+                        <span className="font-semibold">{file.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Tooltip label="Multiple HAR file analysis will be available soon.">
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      className="utility-button-ghost h-8 w-full flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wide text-utility-muted opacity-60 cursor-not-allowed"
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      Add HAR file
+                    </button>
+                  </Tooltip>
                 </div>
 
                 <div className="space-y-2">
