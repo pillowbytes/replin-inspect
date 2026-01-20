@@ -23,7 +23,14 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
     return extractJson(body);
   }, [body, bodyKind]);
 
+  const hideBody = bodyKind === 'javascript';
+  const showImagePlaceholder = bodyKind === 'image';
+
+  const prettyEnabled = PRETTY_ENABLED[bodyKind] ?? true;
+  const colorEnabled = COLOR_ENABLED[bodyKind] ?? true;
+
   const pretty = useMemo(() => {
+    if (!prettyEnabled) return null;
     try {
       if (bodyKind === 'json' || bodyKind === 'text-json') {
         if (!jsonCandidate) return null;
@@ -46,12 +53,14 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
 
   const canPretty = Boolean(pretty);
   const display = viewMode === 'pretty' && canPretty ? pretty : body;
+  const rendered = display;
   const highlighted = useMemo(() => {
+    if (!colorEnabled) return null;
     if (viewMode === 'pretty' && canPretty && pretty) {
-      if (bodyKind === 'json') return highlightJson(pretty);
-      if (bodyKind === 'form') return highlightForm(pretty);
-      if (bodyKind === 'xml' || bodyKind === 'html') return highlightMarkup(pretty);
-      if (bodyKind === 'javascript') return highlightJavascript(pretty);
+      if (bodyKind === 'json') return highlightJson(rendered);
+      if (bodyKind === 'form') return highlightForm(rendered);
+      if (bodyKind === 'xml' || bodyKind === 'html') return highlightMarkup(rendered);
+      if (bodyKind === 'javascript') return highlightJavascript(rendered);
       return null;
     }
 
@@ -63,7 +72,7 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
     }
 
     return null;
-  }, [viewMode, canPretty, pretty, bodyKind, display]);
+  }, [viewMode, canPretty, pretty, bodyKind, display, rendered, colorEnabled]);
 
   const handleCopy = async () => {
     try {
@@ -77,48 +86,54 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-[11px] text-utility-muted">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setViewMode('pretty')}
-            disabled={!canPretty}
-            className={`h-7 px-2 border border-utility-border rounded-[4px] ${
-              viewMode === 'pretty'
-                ? 'text-utility-text bg-[#EFF6FF] dark:bg-utility-selection'
-                : 'text-utility-muted bg-transparent'
-            } ${canPretty ? '' : 'opacity-50 cursor-not-allowed'}`}
-          >
-            Pretty
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('raw')}
-            className={`h-7 px-2 border border-utility-border rounded-[4px] ${
-              viewMode === 'raw'
-                ? 'text-utility-text bg-[#EFF6FF] dark:bg-utility-selection'
-                : 'text-utility-muted bg-transparent'
-            }`}
-          >
-            Raw
-          </button>
+      {!hideBody && !showImagePlaceholder && (
+        <div className="flex items-center justify-between text-[11px] text-utility-muted">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setViewMode('pretty')}
+              disabled={!canPretty}
+              className={`h-7 px-2 border border-utility-border rounded-[4px] ${
+                viewMode === 'pretty'
+                  ? 'text-utility-text bg-[#EFF6FF] dark:bg-utility-selection'
+                  : 'text-utility-muted bg-transparent'
+              } ${canPretty ? '' : 'opacity-50 cursor-not-allowed'}`}
+            >
+              Pretty
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('raw')}
+              className={`h-7 px-2 border border-utility-border rounded-[4px] ${
+                viewMode === 'raw'
+                  ? 'text-utility-text bg-[#EFF6FF] dark:bg-utility-selection'
+                  : 'text-utility-muted bg-transparent'
+              }`}
+            >
+              Raw
+            </button>
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="h-7 px-2 border border-utility-border rounded-[4px] text-utility-muted hover:text-utility-text flex items-center gap-1"
+            >
+              {copied ? (
+                <CheckIcon className="h-4 w-4" />
+              ) : (
+                <ClipboardDocumentIcon className="h-4 w-4" />
+              )}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+            {copied && (
+              <span className="pointer-events-none absolute right-0 -top-7 whitespace-nowrap rounded-none border border-utility-border bg-[#EFF6FF] dark:bg-utility-sidebar px-2 py-1 text-[10px] font-mono text-utility-muted">
+                Copied
+              </span>
+            )}
+          </div>
         </div>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="h-7 px-2 border border-utility-border rounded-[4px] text-utility-muted hover:text-utility-text flex items-center gap-1"
-          >
-            {copied ? <CheckIcon className="h-4 w-4" /> : <ClipboardDocumentIcon className="h-4 w-4" />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-          {copied && (
-            <span className="pointer-events-none absolute right-0 -top-7 whitespace-nowrap rounded-none border border-utility-border bg-[#EFF6FF] dark:bg-utility-sidebar px-2 py-1 text-[10px] font-mono text-utility-muted">
-              Copied
-            </span>
-          )}
-        </div>
-      </div>
+      )}
       <div className="border border-utility-border bg-[#EFF6FF] dark:bg-utility-code p-3 text-utility-code-text">
         <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-utility-muted">
           <span>{formatKindLabel(bodyKind)}</span>
@@ -128,23 +143,45 @@ export default function BodyViewer({ body, mimeType, contentType }: BodyViewerPr
             </span>
           )}
         </div>
-        <div className={`relative ${expanded ? '' : 'max-h-52 overflow-hidden'}`}>
-          <pre className="text-[12px] font-mono whitespace-pre-wrap break-words">
-            {highlighted ?? display}
-          </pre>
-          {!expanded && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-utility-code to-transparent" />
-          )}
-        </div>
-        <div className="mt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="h-7 px-2 border border-utility-border rounded-[4px] text-utility-text hover:bg-[#EFF6FF] dark:hover:bg-utility-selection"
-          >
-            {expanded ? 'Show less' : 'Show more'}
-          </button>
-        </div>
+        {showImagePlaceholder ? (
+          <div className="mt-2 space-y-2">
+            <div
+              className="h-28 w-full border border-dashed border-utility-border bg-utility-main flex items-center justify-center"
+              title="Image visualization will be available soon."
+            >
+              <div className="text-[10px] uppercase tracking-wide text-utility-muted">
+                Image preview placeholder
+              </div>
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-utility-muted">
+              Image visualization will be available soon.
+            </div>
+          </div>
+        ) : hideBody ? (
+          <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-utility-muted">
+            Body is too large to display for performance reasons.
+          </div>
+        ) : (
+          <>
+            <div className={`relative ${expanded ? '' : 'max-h-52 overflow-hidden'}`}>
+              <pre className="text-[12px] font-mono whitespace-pre-wrap break-words">
+                {highlighted ?? rendered}
+              </pre>
+              {!expanded && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-utility-code to-transparent" />
+              )}
+            </div>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="h-7 px-2 border border-utility-border rounded-[4px] text-utility-text hover:bg-[#EFF6FF] dark:hover:bg-utility-selection"
+              >
+                {expanded ? 'Show less' : 'Show more'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -156,16 +193,27 @@ type BodyKind =
   | 'xml'
   | 'html'
   | 'javascript'
+  | 'image'
   | 'text'
   | 'text-json'
   | 'multipart'
   | 'unknown';
+
+const PRETTY_ENABLED: Partial<Record<BodyKind, boolean>> = {
+  javascript: false,
+};
+
+const COLOR_ENABLED: Partial<Record<BodyKind, boolean>> = {
+  'text-json': false,
+  javascript: false,
+};
 
 function detectBodyKind(body: string, mimeType?: string, contentType?: string): BodyKind {
   const type = (mimeType || contentType || '').toLowerCase();
   if (type.includes('application/json') || type.includes('+json')) return 'json';
   if (type.includes('application/x-www-form-urlencoded')) return 'form';
   if (type.includes('multipart/form-data')) return 'multipart';
+  if (type.startsWith('image/')) return 'image';
   if (type.includes('text/html')) return 'html';
   if (
     type.includes('application/javascript') ||
@@ -220,6 +268,8 @@ function formatKindLabel(kind: BodyKind) {
       return 'HTML';
     case 'javascript':
       return 'JAVASCRIPT';
+    case 'image':
+      return 'IMAGE';
     case 'multipart':
       return 'MULTIPART';
     case 'text':
