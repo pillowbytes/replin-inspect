@@ -29,7 +29,7 @@ interface ResultsTableProps {
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type StatusClass = '2xx' | '3xx' | '4xx' | '5xx';
 type ResourceTypeFilter = 'fetch-xhr' | 'js' | 'css' | 'websocket';
-type SortColumn = 'time' | 'duration';
+type SortColumn = 'time' | 'method' | 'status' | 'path' | 'type' | 'size';
 
 /* ======================
    Helpers
@@ -135,6 +135,25 @@ function totalTransferSize(req: HarRequest) {
   return (requestBytes ?? 0) + (responseBytes ?? 0);
 }
 
+function getSortValue(req: HarRequest, column: SortColumn) {
+  switch (column) {
+    case 'time':
+      return req.startTime;
+    case 'method':
+      return req.method;
+    case 'status':
+      return req.status;
+    case 'path':
+      return req.path ?? req.url ?? '';
+    case 'type':
+      return req.resourceType ?? '';
+    case 'size':
+      return totalTransferSize(req);
+    default:
+      return '';
+  }
+}
+
 /* ======================
    Component
    ====================== */
@@ -150,8 +169,8 @@ export default function ResultsTable({
   urlQuery = '',
   issueFilter = 'all',
 }: ResultsTableProps) {
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [sortColumn, setSortColumn] = useState<SortColumn>('duration');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('time');
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -186,10 +205,17 @@ export default function ResultsTable({
         return methodOk && statusOk && urlOk && resourceOk;
       })
       .sort((a, b) => {
+        const aValue = getSortValue(a, sortColumn);
+        const bValue = getSortValue(b, sortColumn);
+
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return 1;
+        if (bValue == null) return -1;
+
         const delta =
-          sortColumn === 'time'
-            ? a.startTime - b.startTime
-            : ms(a.duration) - ms(b.duration);
+          typeof aValue === 'number' && typeof bValue === 'number'
+            ? aValue - bValue
+            : String(aValue).localeCompare(String(bValue));
         return sortDir === 'asc' ? delta : -delta;
       });
   }, [
@@ -270,46 +296,66 @@ export default function ResultsTable({
           <div
             className="sticky top-0 z-10 bg-utility-main grid grid-cols-[110px_70px_70px_minmax(0,1fr)_80px_90px_200px] items-center px-3 utility-table-header"
           >
-            <button
-              onClick={() => {
-                setSortColumn('time');
-                setSortDir((d) =>
-                  sortColumn === 'time' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'
-                );
-              }}
-              className="flex items-center gap-1 text-left hover:text-utility-text"
-            >
-              <ClockIcon className="h-3 w-3" />
-              Time
-              {sortColumn === 'time' &&
-                (sortDir === 'asc' ? (
-                  <BarsArrowUpIcon className="h-3 w-3" />
-                ) : (
-                  <BarsArrowDownIcon className="h-3 w-3" />
-                ))}
-            </button>
-            <div>Method</div>
-            <div>Status</div>
-            <div>Path</div>
-            <div>Type</div>
-            <div>Size</div>
-            <button
-              onClick={() => {
-                setSortColumn('duration');
-                setSortDir((d) =>
-                  sortColumn === 'duration' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'
-                );
-              }}
-              className="flex items-center justify-end gap-1 text-right hover:text-utility-text"
-            >
-              Timeline
-              {sortColumn === 'duration' &&
-                (sortDir === 'asc' ? (
-                  <BarsArrowUpIcon className="h-3 w-3" />
-                ) : (
-                  <BarsArrowDownIcon className="h-3 w-3" />
-                ))}
-            </button>
+            <SortHeader
+              column="time"
+              label="Time"
+              icon={<ClockIcon className="h-3 w-3" />}
+              align="left"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={setSortColumn}
+              onToggleDir={setSortDir}
+            />
+            <SortHeader
+              column="method"
+              label="Method"
+              align="left"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={setSortColumn}
+              onToggleDir={setSortDir}
+            />
+            <SortHeader
+              column="status"
+              label="Status"
+              align="left"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={setSortColumn}
+              onToggleDir={setSortDir}
+            />
+            <SortHeader
+              column="path"
+              label="Path"
+              align="left"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={setSortColumn}
+              onToggleDir={setSortDir}
+            />
+            <SortHeader
+              column="type"
+              label="Type"
+              align="left"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={setSortColumn}
+              onToggleDir={setSortDir}
+            />
+            <SortHeader
+              column="size"
+              label="Size"
+              align="left"
+              sortColumn={sortColumn}
+              sortDir={sortDir}
+              onSort={setSortColumn}
+              onToggleDir={setSortDir}
+            />
+            <Tooltip label="Timing breakdown of the request lifecycle.">
+              <div className="text-right text-[11px] font-bold uppercase tracking-wide text-utility-muted">
+                Timeline
+              </div>
+            </Tooltip>
           </div>
 
           <div>
@@ -444,8 +490,10 @@ function Tooltip({
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [clampedLeft, setClampedLeft] = useState<number | null>(null);
   const [placement, setPlacement] = useState<'top' | 'bottom'>('top');
   const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const tooltipRef = useRef<HTMLSpanElement | null>(null);
 
   const updatePosition = () => {
     if (!triggerRef.current) return;
@@ -469,6 +517,23 @@ function Tooltip({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !pos) {
+      setClampedLeft(null);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const width = tooltipRef.current?.offsetWidth ?? 0;
+      if (!width) return;
+      const padding = 8;
+      const minLeft = padding + width / 2;
+      const maxLeft = window.innerWidth - padding - width / 2;
+      const nextLeft = Math.min(Math.max(pos.left, minLeft), maxLeft);
+      setClampedLeft(nextLeft);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, pos]);
+
   return (
     <span
       ref={triggerRef}
@@ -485,15 +550,60 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className={`pointer-events-none fixed z-[1000] -translate-x-1/2 whitespace-nowrap rounded-none bg-black dark:bg-neutral-800 px-2 py-1 text-[11px] font-mono text-white dark:text-neutral-100 ${
+            ref={tooltipRef}
+            className={`pointer-events-none fixed z-[1000] -translate-x-1/2 whitespace-nowrap rounded-none border border-utility-border bg-[#EFF6FF] dark:bg-utility-sidebar px-2 py-1 text-[11px] font-mono text-utility-muted ${
               placement === 'top' ? '-translate-y-full' : 'translate-y-0'
             }`}
-            style={{ left: pos.left, top: placement === 'top' ? pos.top - 8 : pos.top + 8 }}
+            style={{
+              left: clampedLeft ?? pos.left,
+              top: placement === 'top' ? pos.top - 8 : pos.top + 8,
+            }}
           >
             {label}
           </span>,
           document.body
         )}
     </span>
+  );
+}
+
+function SortHeader({
+  column,
+  label,
+  icon,
+  align,
+  sortColumn,
+  sortDir,
+  onSort,
+  onToggleDir,
+}: {
+  column: SortColumn;
+  label: string;
+  icon?: React.ReactNode;
+  align: 'left' | 'right';
+  sortColumn: SortColumn;
+  sortDir: 'asc' | 'desc';
+  onSort: (column: SortColumn) => void;
+  onToggleDir: React.Dispatch<React.SetStateAction<'asc' | 'desc'>>;
+}) {
+  const isActive = sortColumn === column;
+  const Icon = sortDir === 'asc' ? BarsArrowUpIcon : BarsArrowDownIcon;
+  const textAlign = align === 'right' ? 'justify-end text-right' : 'text-left';
+
+  return (
+    <Tooltip label={`Sort by ${label}`}>
+      <button
+        onClick={() => {
+          onSort(column);
+          onToggleDir((d) => (isActive ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+        }}
+        className={`flex items-center gap-1 ${textAlign} hover:text-utility-text text-[11px] font-bold uppercase tracking-wide text-utility-muted`}
+        type="button"
+      >
+        {icon}
+        <span>{label}</span>
+        {isActive && <Icon className="h-3 w-3 text-utility-accent" />}
+      </button>
+    </Tooltip>
   );
 }

@@ -3,6 +3,7 @@
 import { Finding, HarRequest, HarTimings } from '@/types';
 import { getMethodStyle, getStatusText } from '@/lib/utils/filterStyles';
 import { ChevronDownIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import BodyViewer from '@/components/BodyViewer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -26,6 +27,7 @@ export default function RequestDetailsPanel({
   findings = [],
 }: RequestDetailsPanelProps) {
   const [tab, setTab] = useState<Tab>('overview');
+  const [copyNotice, setCopyNotice] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const requestFindings = useMemo(() => findings ?? [], [findings]);
   const findingsByContext = useMemo(
@@ -72,7 +74,17 @@ export default function RequestDetailsPanel({
         className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-5 text-[13px] text-utility-text thin-scrollbar"
       >
         {tab === 'overview' && (
-          <OverviewTab request={request} findings={requestFindings} />
+        <OverviewTab
+          request={request}
+          findings={requestFindings}
+          copyNotice={copyNotice}
+          onCopy={() => {
+            navigator.clipboard.writeText(request.url).then(() => {
+              setCopyNotice(true);
+              window.setTimeout(() => setCopyNotice(false), 1600);
+            });
+          }}
+        />
         )}
         {tab === 'request' && (
           <RequestTab request={request} findings={findingsByContext.request} />
@@ -95,9 +107,13 @@ export default function RequestDetailsPanel({
 function OverviewTab({
   request,
   findings,
+  copyNotice,
+  onCopy,
 }: {
   request: HarRequest;
   findings: Finding[];
+  copyNotice: boolean;
+  onCopy: () => void;
 }) {
   const alertFindings = findings.filter((f) => f.severity !== 'info');
   const referrerPolicy =
@@ -157,9 +173,13 @@ function OverviewTab({
           <KeyValue label="Wire protocol" value={wireProtocol} />
         </DenseGrid>
         <div className="flex justify-center">
-          <button className="utility-button-ghost flex items-center justify-center gap-2 px-5 font-bold">
+          <button
+            className="utility-button-ghost flex items-center justify-center gap-2 px-5 font-bold"
+            onClick={onCopy}
+            type="button"
+          >
             <DocumentDuplicateIcon className="h-4 w-4" />
-            Copy URL
+            {copyNotice ? 'Copied' : 'Copy URL'}
           </button>
         </div>
       </div>
@@ -199,6 +219,7 @@ function RequestTab({
         mimeType={request.requestBody?.mimeType}
         size={request.sizes?.requestBody}
         body={request.requestBody?.text}
+        contentType={request.headers?.['content-type']}
       />
 
       <HeadersTab title="Request headers" headers={request.headers} />
@@ -242,6 +263,7 @@ function ResponseTab({
         encoding={request.responseBody?.encoding}
         size={request.sizes?.responseBody}
         body={request.responseBody?.text}
+        contentType={request.responseHeaders?.['content-type']}
       />
 
       <HeadersTab title="Response headers" headers={request.responseHeaders} />
@@ -259,15 +281,15 @@ function BodySection({
   encoding,
   size,
   body,
+  contentType,
 }: {
   title: string;
   mimeType?: string;
   encoding?: string;
   size?: number;
   body?: string;
+  contentType?: string;
 }) {
-  const [open, setOpen] = useState(false);
-
   if (!body) {
     return (
       <Section title={title}>
@@ -284,19 +306,7 @@ function BodySection({
         <KeyValue label="Size" value={formatBytes(size)} />
       </DenseGrid>
 
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-[13px] text-utility-muted hover:text-utility-text"
-      >
-        <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-        View body
-      </button>
-
-      {open && (
-        <pre className="mt-2 max-h-64 overflow-x-auto bg-utility-code border border-utility-border p-3 text-[12px] font-mono text-utility-code-text">
-          {body}
-        </pre>
-      )}
+      <BodyViewer body={body} mimeType={mimeType} contentType={contentType} />
     </Section>
   );
 }
@@ -483,11 +493,14 @@ function KeyValue({
   mono?: boolean;
   className?: string;
 }) {
+  const shouldWrap = wrap !== undefined ? wrap : true;
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       <div className="text-[11px] font-bold uppercase tracking-wide text-utility-muted">{label}</div>
       <div
-        className={`text-[13px] text-utility-text ${wrap ? 'break-all' : ''} ${
+        className={`text-[13px] text-utility-text ${
+          shouldWrap ? 'break-words whitespace-normal' : ''
+        } ${
           mono ? 'font-mono' : ''
         } ${className ?? ''}`}
       >
@@ -707,7 +720,9 @@ function Tooltip({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [clampedLeft, setClampedLeft] = useState<number | null>(null);
   const [placement, setPlacement] = useState<'top' | 'bottom'>('top');
+  const tooltipRef = useRef<HTMLSpanElement | null>(null);
 
   const updatePosition = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -731,6 +746,23 @@ function Tooltip({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !pos) {
+      setClampedLeft(null);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const width = tooltipRef.current?.offsetWidth ?? 0;
+      if (!width) return;
+      const padding = 8;
+      const minLeft = padding + width / 2;
+      const maxLeft = window.innerWidth - padding - width / 2;
+      const nextLeft = Math.min(Math.max(pos.left, minLeft), maxLeft);
+      setClampedLeft(nextLeft);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, pos]);
+
   return (
     <span
       ref={triggerRef}
@@ -747,10 +779,14 @@ function Tooltip({
         pos &&
         createPortal(
           <span
-            className={`pointer-events-none fixed z-[1000] -translate-x-1/2 whitespace-nowrap rounded-none bg-black px-2 py-1 text-[11px] font-mono text-white ${
+            ref={tooltipRef}
+            className={`pointer-events-none fixed z-[1000] -translate-x-1/2 whitespace-nowrap rounded-none border border-utility-border bg-[#EFF6FF] dark:bg-utility-sidebar px-2 py-1 text-[11px] font-mono text-utility-muted ${
               placement === 'top' ? '-translate-y-full' : 'translate-y-0'
             }`}
-            style={{ left: pos.left, top: placement === 'top' ? pos.top - 8 : pos.top + 8 }}
+            style={{
+              left: clampedLeft ?? pos.left,
+              top: placement === 'top' ? pos.top - 8 : pos.top + 8,
+            }}
           >
             {label}
           </span>,
@@ -811,7 +847,7 @@ function formatFindingText(text: string) {
 
 function CodeWell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border border-utility-border bg-utility-code p-3 space-y-2 text-utility-code-text">
+    <div className="border border-utility-border bg-[#EFF6FF] dark:bg-utility-code p-3 space-y-2 text-utility-code-text">
       {children}
     </div>
   );
