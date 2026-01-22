@@ -104,7 +104,7 @@ function UrlCell({ url }: { url: string }) {
         {url}
       </span>
       {truncate ? (
-        <div className="flex min-w-0 items-center gap-0.5">
+        <div className="flex min-w-0 items-center gap-0">
           <span className="min-w-0 overflow-hidden whitespace-nowrap text-clip font-mono text-[12px] text-utility-text">
             {head}
           </span>
