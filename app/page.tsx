@@ -14,7 +14,11 @@ import { runAllRules } from '@/lib/rules';
 import { HarRequest, TokenInfo, Finding } from '@/types';
 
 // Heroicons
-import { Square3Stack3DIcon } from '@heroicons/react/24/solid';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Square3Stack3DIcon,
+} from '@heroicons/react/24/solid';
 import {
   FolderPlusIcon,
   BugAntIcon,
@@ -22,9 +26,14 @@ import {
   PlusIcon,
 } from '@heroicons/react/20/solid';
 import {
-  Cog6ToothIcon,
   ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
   ChevronDownIcon,
+  ClockIcon,
+  Cog6ToothIcon,
+  EyeIcon,
+  FolderIcon,
+  FunnelIcon,
   MoonIcon,
   NoSymbolIcon,
   SunIcon,
@@ -41,6 +50,11 @@ export default function HomePage() {
   const [mode, setMode] = useState<AnalysisMode>('network');
   const [theme, setTheme] = useState<ThemePreference>('system');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [collapseLeft, setCollapseLeft] = useState(false);
+  const [collapseRight, setCollapseRight] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<
+    'overview' | 'request' | 'response' | 'timing'
+  >('overview');
   const [guideTab, setGuideTab] = useState<GuideTab>('chrome');
   const [requests, setRequests] = useState<HarRequest[]>([]);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
@@ -66,6 +80,7 @@ export default function HomePage() {
   >>(new Set());
   const overlayStartRef = useRef<number | null>(null);
   const overlayTimeoutRef = useRef<number | null>(null);
+  const prevSelectedRequestRef = useRef<string | null>(null);
 
   const findings = useMemo(() => {
     if (!analysisStarted) return [];
@@ -136,6 +151,7 @@ export default function HomePage() {
     setRequests([]);
     setTokenInfo(null);
     setSelectedRequestId(null);
+    setDetailsTab('overview');
     setSelectedMethods(new Set());
     setSelectedStatusClasses(new Set());
     setSelectedResourceTypes(new Set());
@@ -143,6 +159,17 @@ export default function HomePage() {
     setIssueFilter('all');
     setShowFindings(false);
   };
+
+  useEffect(() => {
+    if (
+      selectedRequestId &&
+      collapseRight &&
+      prevSelectedRequestRef.current !== selectedRequestId
+    ) {
+      setCollapseRight(false);
+    }
+    prevSelectedRequestRef.current = selectedRequestId;
+  }, [selectedRequestId, collapseRight]);
 
   useEffect(() => {
     if (analysisStarted) {
@@ -269,11 +296,22 @@ export default function HomePage() {
       className="flex flex-col h-screen"
     >
       <header className="w-full border-b border-utility-border bg-utility-main">
-        <div className="w-full grid grid-cols-[240px_minmax(0,1fr)_400px] items-center gap-0 py-3">
+        <div
+          className="w-full grid items-center gap-0 py-3 transition-[grid-template-columns] duration-300"
+          style={{
+            gridTemplateColumns: analysisStarted
+              ? `${collapseLeft ? '56px' : '240px'} minmax(0,1fr) ${collapseRight ? '56px' : '400px'}`
+              : '240px minmax(0,1fr) 400px',
+          }}
+        >
           <div className="flex items-center justify-center gap-3 px-3 border-r border-utility-border">
             <Link href="/" className="flex items-center gap-3">
               <Square3Stack3DIcon className="h-7 w-7 text-utility-text" />
-              <div className="text-[18px] font-semibold text-utility-text">Replin Inspect</div>
+              {!analysisStarted || !collapseLeft ? (
+                <div className="text-[18px] font-semibold text-utility-text">
+                  Replin Inspect
+                </div>
+              ) : null}
             </Link>
           </div>
           <div className="flex items-center px-3">
@@ -475,67 +513,126 @@ export default function HomePage() {
         ) : (
           <>
             {/* Command center layout */}
-            <div className="grid grid-cols-[240px_minmax(0,1fr)_400px] flex-1 min-h-0 w-full border-t border-utility-border">
-              <aside className="flex flex-col gap-4 p-3 overflow-y-auto no-scrollbar bg-utility-sidebar dark:bg-utility-main border-r border-utility-border">
-                <div className="space-y-3">
-                  <div className="utility-label">HAR files</div>
-                  <div className="space-y-1">
-                    {harFiles.map((file) => (
-                      <div
-                        key={file.id}
-                        className="w-full px-2 py-1 text-[13px] font-mono border-[3px] border-dotted border-utility-border bg-utility-main text-utility-accent flex items-center gap-2"
-                      >
-                        <span className="inline-flex h-3 w-3 items-center justify-center border border-utility-border bg-utility-main">
-                          {file.active && (
-                            <span className="block h-2 w-2 bg-utility-accent" />
-                          )}
-                        </span>
-                        <span className="font-semibold">{file.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Tooltip label="Multiple HAR file analysis will be available soon.">
+            <div
+              className="grid flex-1 min-h-0 w-full border-t border-utility-border transition-[grid-template-columns] duration-300 overflow-visible"
+              style={{
+                gridTemplateColumns: `${collapseLeft ? '56px' : '240px'} minmax(0,1fr) ${
+                  collapseRight ? '56px' : '400px'
+                }`,
+              }}
+            >
+              <aside className="relative z-10 flex flex-col gap-4 p-3 overflow-y-auto no-scrollbar bg-utility-sidebar dark:bg-utility-main border-r border-utility-border">
+                <div
+                  className={`flex items-center ${
+                    collapseLeft ? 'justify-center' : 'justify-between'
+                  }`}
+                >
+                  {!collapseLeft && (
+                    <div className="flex items-center gap-2 text-utility-muted">
+                      <FolderIcon className="h-4 w-4" />
+                      <div className="utility-label">HAR files</div>
+                    </div>
+                  )}
+                  <Tooltip label={collapseLeft ? 'Expand sidebar' : 'Collapse sidebar'}>
                     <button
                       type="button"
-                      disabled
-                      aria-disabled="true"
-                      className="utility-button-ghost h-8 w-full flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wide text-utility-muted opacity-60 cursor-not-allowed"
+                      onClick={() => setCollapseLeft((v) => !v)}
+                      className="h-8 w-8 rounded-[4px] bg-utility-main text-utility-muted/70 hover:text-utility-text flex items-center justify-center"
+                      aria-label={collapseLeft ? 'Expand left sidebar' : 'Collapse left sidebar'}
                     >
-                      <PlusIcon className="h-4 w-4" />
-                      Add HAR file
+                      {collapseLeft ? (
+                        <ChevronRightIcon className="h-5 w-5" />
+                      ) : (
+                        <ChevronLeftIcon className="h-5 w-5" />
+                      )}
                     </button>
                   </Tooltip>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    <Metric label="Requests" value={`${metrics.total}`} />
-                    <Metric label="Errors" value={`${metrics.failed}`} tone="danger" />
-                    <Metric label="Avg latency" value={`${metrics.avgDuration} ms`} tone="warning" />
-                    <Metric label="Warnings" value={`${findingsSummary.warning}`} tone="warning" />
+                {collapseLeft ? (
+                  <div className="flex flex-col items-center gap-4 text-utility-muted">
+                    <Tooltip label="HAR files">
+                      <button
+                        type="button"
+                        onClick={() => setCollapseLeft(false)}
+                        className="h-8 w-8 flex items-center justify-center"
+                      >
+                        <FolderPlusIcon className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                    <div className="h-px w-6 bg-utility-border" />
+                    <Tooltip label="Filters">
+                      <button
+                        type="button"
+                        onClick={() => setCollapseLeft(false)}
+                        className="h-8 w-8 flex items-center justify-center"
+                      >
+                        <FunnelIcon className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        {harFiles.map((file) => (
+                          <div
+                            key={file.id}
+                            className="w-full px-2 py-1 text-[13px] font-mono border-[3px] border-dotted border-utility-border bg-utility-main text-utility-accent flex items-center gap-2"
+                          >
+                            <span className="inline-flex h-3 w-3 items-center justify-center border border-utility-border bg-utility-main">
+                              {file.active && (
+                                <span className="block h-2 w-2 bg-utility-accent" />
+                              )}
+                            </span>
+                            <span className="font-semibold">{file.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <Tooltip label="Multiple HAR file analysis will be available soon.">
+                        <button
+                          type="button"
+                          disabled
+                          aria-disabled="true"
+                          className="utility-button-ghost h-8 w-full flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wide text-utility-muted opacity-60 cursor-not-allowed"
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                          Add HAR file
+                        </button>
+                      </Tooltip>
+                    </div>
 
-                <div className="space-y-3">
-                  <FiltersPanel
-                    selectedMethods={selectedMethods}
-                    setSelectedMethods={setSelectedMethods}
-                    selectedStatusClasses={selectedStatusClasses}
-                    setSelectedStatusClasses={setSelectedStatusClasses}
-                    selectedResourceTypes={selectedResourceTypes}
-                    setSelectedResourceTypes={setSelectedResourceTypes}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        <Metric label="Requests" value={`${metrics.total}`} />
+                        <Metric label="Errors" value={`${metrics.failed}`} tone="danger" />
+                        <Metric label="Avg latency" value={`${metrics.avgDuration} ms`} tone="warning" />
+                        <Metric label="Warnings" value={`${findingsSummary.warning}`} tone="warning" />
+                      </div>
+                    </div>
 
-                <div className="mt-auto pt-2">
-                  <button className="flex items-center gap-2 text-[12px] text-utility-muted">
-                    <Cog6ToothIcon className="h-4 w-4" />
-                    Configuration
-                  </button>
-                </div>
+                    <div className="h-px bg-utility-border" />
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-utility-muted">
+                        <FunnelIcon className="h-4 w-4" />
+                        <div className="utility-label">Filters</div>
+                      </div>
+                      <FiltersPanel
+                        selectedMethods={selectedMethods}
+                        setSelectedMethods={setSelectedMethods}
+                        selectedStatusClasses={selectedStatusClasses}
+                        setSelectedStatusClasses={setSelectedStatusClasses}
+                        selectedResourceTypes={selectedResourceTypes}
+                        setSelectedResourceTypes={setSelectedResourceTypes}
+                      />
+                    </div>
+
+                  </>
+                )}
               </aside>
 
-              <section className="min-h-0 flex flex-col border-r border-utility-border">
+              <section className="min-h-0 flex flex-col border-r border-utility-border relative z-0">
                 <div className="h-[40px] px-4 flex items-center justify-between border-b border-utility-border bg-utility-main">
                   <div className="text-[16px] font-medium text-utility-text">
                     {showFindings ? 'Findings' : 'Requests'}
@@ -608,21 +705,96 @@ export default function HomePage() {
                 </div>
               </section>
 
-              <aside className="min-h-0 flex flex-col bg-utility-sidebar">
-                <div className="h-[40px] px-4 flex items-center border-b border-utility-border bg-utility-sidebar">
-                  <div className="text-[16px] font-medium text-utility-text">
-                    Request details
-                  </div>
+              <aside className="relative z-10 min-h-0 flex flex-col bg-utility-sidebar border-l border-utility-border">
+                <div
+                  className={`h-[40px] px-4 flex items-center gap-2 border-b border-utility-border bg-utility-sidebar ${
+                    collapseRight ? 'justify-center' : ''
+                  }`}
+                >
+                  <Tooltip label={collapseRight ? 'Expand details' : 'Collapse details'}>
+                    <button
+                      type="button"
+                      onClick={() => setCollapseRight((v) => !v)}
+                      className="h-8 w-8 rounded-[4px] bg-utility-main text-utility-muted/70 hover:text-utility-text flex items-center justify-center"
+                      aria-label={collapseRight ? 'Expand details' : 'Collapse details'}
+                    >
+                      {collapseRight ? (
+                        <ChevronLeftIcon className="h-5 w-5" />
+                      ) : (
+                        <ChevronRightIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  </Tooltip>
+                  {!collapseRight && (
+                    <div className="text-[16px] font-medium text-utility-text">
+                      Request details
+                    </div>
+                  )}
                 </div>
-                {selectedRequestId && (
-                  <div className="flex-1 min-h-0">
-                    <RequestDetailsPanel
-                      request={
-                        requests.find((r) => r.id === selectedRequestId)!
-                      }
-                      findings={findingsByRequestId[selectedRequestId]}
-                    />
+                {collapseRight ? (
+                  <div className="flex flex-col items-center gap-4 text-utility-muted">
+                    <Tooltip label="Overview">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailsTab('overview');
+                          setCollapseRight(false);
+                        }}
+                        className="h-8 w-8 flex items-center justify-center"
+                      >
+                        <EyeIcon className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                    <Tooltip label="Request">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailsTab('request');
+                          setCollapseRight(false);
+                        }}
+                        className="h-8 w-8 flex items-center justify-center"
+                      >
+                        <ArrowUpTrayIcon className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                    <Tooltip label="Response">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailsTab('response');
+                          setCollapseRight(false);
+                        }}
+                        className="h-8 w-8 flex items-center justify-center"
+                      >
+                        <ArrowDownTrayIcon className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                    <Tooltip label="Timing">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailsTab('timing');
+                          setCollapseRight(false);
+                        }}
+                        className="h-8 w-8 flex items-center justify-center"
+                      >
+                        <ClockIcon className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
                   </div>
+                ) : (
+                  selectedRequestId && (
+                    <div className="flex-1 min-h-0">
+                      <RequestDetailsPanel
+                        request={
+                          requests.find((r) => r.id === selectedRequestId)!
+                        }
+                        findings={findingsByRequestId[selectedRequestId]}
+                        activeTab={detailsTab}
+                        onTabChange={setDetailsTab}
+                      />
+                    </div>
+                  )
                 )}
               </aside>
             </div>
