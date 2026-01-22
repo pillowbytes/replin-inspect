@@ -2,7 +2,14 @@
 
 import { Finding, HarRequest, HarTimings } from '@/types';
 import { getMethodStyle, getStatusText } from '@/lib/utils/filterStyles';
-import { ChevronDownIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  DocumentDuplicateIcon,
+  EyeIcon,
+} from '@heroicons/react/24/outline';
 import BodyViewer from '@/components/BodyViewer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -16,6 +23,8 @@ type Tab = 'overview' | 'request' | 'response' | 'timing';
 interface RequestDetailsPanelProps {
   request: HarRequest;
   findings?: Finding[];
+  activeTab?: Tab;
+  onTabChange?: (tab: Tab) => void;
 }
 
 /* ======================
@@ -25,8 +34,11 @@ interface RequestDetailsPanelProps {
 export default function RequestDetailsPanel({
   request,
   findings = [],
+  activeTab,
+  onTabChange,
 }: RequestDetailsPanelProps) {
   const [tab, setTab] = useState<Tab>('overview');
+  const currentTab = activeTab ?? tab;
   const [copyNotice, setCopyNotice] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const requestFindings = useMemo(() => findings ?? [], [findings]);
@@ -40,10 +52,10 @@ export default function RequestDetailsPanel({
   );
   const tabs = useMemo(
     () => [
-      { id: 'overview' as const, label: 'Overview' },
-      { id: 'request' as const, label: 'Request' },
-      { id: 'response' as const, label: 'Response' },
-      { id: 'timing' as const, label: 'Timing' },
+      { id: 'overview' as const, label: 'Overview', icon: EyeIcon },
+      { id: 'request' as const, label: 'Request', icon: ArrowUpTrayIcon },
+      { id: 'response' as const, label: 'Response', icon: ArrowDownTrayIcon },
+      { id: 'timing' as const, label: 'Timing', icon: ClockIcon },
     ],
     [],
   );
@@ -51,18 +63,26 @@ export default function RequestDetailsPanel({
   return (
     <div className="h-full flex flex-col bg-utility-sidebar border-l border-utility-border">
       <div className="sticky top-0 z-10 border-b border-utility-border bg-utility-sidebar">
-        <div className="flex items-center h-[32px] px-3 text-[12px] font-bold">
+        <div className="flex items-center h-[32px] px-2 text-[12px] font-bold">
           {tabs.map((item) => (
             <button
               key={item.id}
-              onClick={() => setTab(item.id)}
-              className={`h-[32px] px-3 border-b-2 ${
-                tab === item.id
+              onClick={() => {
+                onTabChange?.(item.id);
+                if (activeTab === undefined) {
+                  setTab(item.id);
+                }
+              }}
+              className={`h-[32px] px-2 border-b-2 ${
+                currentTab === item.id
                   ? 'border-utility-accent text-utility-text'
                   : 'border-transparent text-utility-muted hover:text-utility-text'
               }`}
             >
-              {item.label}
+              <span className="inline-flex items-center gap-2">
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </span>
             </button>
           ))}
         </div>
@@ -73,7 +93,7 @@ export default function RequestDetailsPanel({
         ref={scrollRef}
         className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-5 text-[13px] text-utility-text thin-scrollbar"
       >
-        {tab === 'overview' && (
+        {currentTab === 'overview' && (
         <OverviewTab
           request={request}
           findings={requestFindings}
@@ -86,13 +106,13 @@ export default function RequestDetailsPanel({
           }}
         />
         )}
-        {tab === 'request' && (
+        {currentTab === 'request' && (
           <RequestTab request={request} findings={findingsByContext.request} />
         )}
-        {tab === 'response' && (
+        {currentTab === 'response' && (
           <ResponseTab request={request} findings={findingsByContext.response} />
         )}
-        {tab === 'timing' && (
+        {currentTab === 'timing' && (
           <TimingTab request={request} findings={findingsByContext.timing} />
         )}
       </div>
