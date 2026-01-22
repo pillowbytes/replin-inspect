@@ -68,6 +68,58 @@ function sizeLabel(bytes?: number) {
   return `${Math.round(bytes / 1024)} KB`;
 }
 
+function UrlCell({ url }: { url: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [truncate, setTruncate] = useState(false);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const measure = () => {
+      const full = element.querySelector('[data-full-url]') as HTMLSpanElement | null;
+      if (!full) return;
+      setTruncate(full.offsetWidth > element.clientWidth);
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [url]);
+
+  const tailLength = 24;
+  const tail = url.slice(-tailLength);
+  const head = url.slice(0, -tailLength);
+
+  return (
+    <div ref={containerRef} className="relative min-w-0 pr-8">
+      <span
+        data-full-url
+        aria-hidden="true"
+        className="absolute -left-[9999px] -top-[9999px] whitespace-nowrap font-mono text-[12px]"
+      >
+        {url}
+      </span>
+      {truncate ? (
+        <div className="flex min-w-0 items-center gap-0">
+          <span className="min-w-0 overflow-hidden whitespace-nowrap text-clip font-mono text-[12px] text-utility-text">
+            {head}
+          </span>
+          <span className="flex-none font-mono text-[12px] font-bold text-utility-muted/60">...</span>
+          <span className="flex-none font-mono text-[12px] text-utility-text">{tail}</span>
+        </div>
+      ) : (
+        <span className="truncate font-mono text-[12px] text-utility-text">
+          {url}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function matchesResourceType(
   resourceType: string,
   selected: Set<ResourceTypeFilter>
@@ -144,7 +196,7 @@ function getSortValue(req: HarRequest, column: SortColumn) {
     case 'status':
       return req.status;
     case 'path':
-      return req.path ?? req.url ?? '';
+      return req.url ?? '';
     case 'type':
       return req.resourceType ?? '';
     case 'size':
@@ -326,7 +378,7 @@ export default function ResultsTable({
             />
             <SortHeader
               column="path"
-              label="Path"
+              label="URL"
               align="left"
               sortColumn={sortColumn}
               sortDir={sortDir}
@@ -404,17 +456,12 @@ export default function ResultsTable({
                 </div>
               </Tooltip>
 
-              {/* Path / Domain */}
-              <div className="min-w-0 flex items-center gap-2">
-                <span className="truncate font-mono text-[12px] text-utility-text">
-                  {req.path ?? req.url}
-                </span>
-                {req.domain && (
-                  <span className="truncate font-mono text-[11px] text-utility-muted">
-                    {req.domain}
-                  </span>
-                )}
-              </div>
+              {/* URL */}
+              <Tooltip label={req.url}>
+                <div className="min-w-0">
+                  <UrlCell url={req.url} />
+                </div>
+              </Tooltip>
 
               {/* Type */}
               <div className="text-[11px] font-bold uppercase text-utility-muted">

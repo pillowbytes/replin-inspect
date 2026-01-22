@@ -39,7 +39,8 @@ export default function RequestDetailsPanel({
 }: RequestDetailsPanelProps) {
   const [tab, setTab] = useState<Tab>('overview');
   const currentTab = activeTab ?? tab;
-  const [copyNotice, setCopyNotice] = useState(false);
+  const [copyUrlNotice, setCopyUrlNotice] = useState(false);
+  const [copyRequestNotice, setCopyRequestNotice] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const requestFindings = useMemo(() => findings ?? [], [findings]);
   const findingsByContext = useMemo(
@@ -97,12 +98,21 @@ export default function RequestDetailsPanel({
         <OverviewTab
           request={request}
           findings={requestFindings}
-          copyNotice={copyNotice}
-          onCopy={() => {
+          copyUrlNotice={copyUrlNotice}
+          copyRequestNotice={copyRequestNotice}
+          onCopyUrl={() => {
             navigator.clipboard.writeText(request.url).then(() => {
-              setCopyNotice(true);
-              window.setTimeout(() => setCopyNotice(false), 1600);
+              setCopyUrlNotice(true);
+              window.setTimeout(() => setCopyUrlNotice(false), 1600);
             });
+          }}
+          onCopyRequest={() => {
+            navigator.clipboard
+              .writeText(JSON.stringify(request, null, 2))
+              .then(() => {
+                setCopyRequestNotice(true);
+                window.setTimeout(() => setCopyRequestNotice(false), 1600);
+              });
           }}
         />
         )}
@@ -127,13 +137,17 @@ export default function RequestDetailsPanel({
 function OverviewTab({
   request,
   findings,
-  copyNotice,
-  onCopy,
+  copyUrlNotice,
+  copyRequestNotice,
+  onCopyUrl,
+  onCopyRequest,
 }: {
   request: HarRequest;
   findings: Finding[];
-  copyNotice: boolean;
-  onCopy: () => void;
+  copyUrlNotice: boolean;
+  copyRequestNotice: boolean;
+  onCopyUrl: () => void;
+  onCopyRequest: () => void;
 }) {
   const alertFindings = findings.filter((f) => f.severity !== 'info');
   const referrerPolicy =
@@ -166,7 +180,26 @@ function OverviewTab({
           Request context
         </div>
         <SingleColumn>
-          <WellField label="Resource URI" value={request.url} />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-utility-muted">
+                Resource URI
+              </div>
+              <button
+                className="utility-button-ghost flex items-center gap-1 px-2 text-[11px]"
+                onClick={onCopyUrl}
+                type="button"
+              >
+                <DocumentDuplicateIcon className="h-3 w-3" />
+                {copyUrlNotice ? 'Copied' : 'Copy URL'}
+              </button>
+            </div>
+            <CodeWell>
+              <div className="text-[12px] font-mono text-utility-code-text break-all">
+                {request.url}
+              </div>
+            </CodeWell>
+          </div>
         </SingleColumn>
         <DenseGrid>
           <KeyValue
@@ -192,14 +225,14 @@ function OverviewTab({
           <KeyValue label="Stream ID" value={streamId} />
           <KeyValue label="Wire protocol" value={wireProtocol} />
         </DenseGrid>
-        <div className="flex justify-center">
+        <div className="flex justify-center pt-8">
           <button
             className="utility-button-ghost flex items-center justify-center gap-2 px-5 font-bold"
-            onClick={onCopy}
+            onClick={onCopyRequest}
             type="button"
           >
             <DocumentDuplicateIcon className="h-4 w-4" />
-            {copyNotice ? 'Copied' : 'Copy URL'}
+            {copyRequestNotice ? 'Copied' : 'Copy request'}
           </button>
         </div>
       </div>
