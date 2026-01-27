@@ -45,7 +45,7 @@ Build an opinionated diagnostic assistant that reduces HAR cognitive overload:
 
 ## How to Use (Hosted)
 
-1. Open https://replin.ai in your browser.
+1. Open https://inspect.replin.ai in your browser.
 2. Upload a HAR file (processed locally).
 3. Review request‑level findings and timing breakdowns.
 4. Drill into request details for evidence and context.
