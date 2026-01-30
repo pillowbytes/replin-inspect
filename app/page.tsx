@@ -45,6 +45,26 @@ type ThemePreference = 'system' | 'light' | 'dark';
 type GuideTab = 'chrome' | 'edge' | 'firefox' | 'safari';
 
 export default function HomePage() {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Replin Inspect',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Web',
+    url: 'https://inspect.replin.ai',
+    description:
+      'Local-first HAR inspection and troubleshooting tool for support engineers. Analyze network requests, timings, and failures directly in the browser.',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Pillowbytes',
+    },
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+  };
+
   const [analysisStarted, setAnalysisStarted] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [mode, setMode] = useState<AnalysisMode>('network');
@@ -295,6 +315,11 @@ export default function HomePage() {
     <div
       className="flex flex-col h-screen"
     >
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="w-full border-b border-utility-border bg-utility-main">
         <div
           className="w-full grid items-center gap-0 py-3 transition-[grid-template-columns] duration-300"
