@@ -324,6 +324,9 @@ export default function ResultsTable({
     return () => window.removeEventListener('keydown', handler);
   }, [filtered, selectedRequestId, onSelectRequest]);
 
+  // When selection changes, keep the selected row centered in the table
+  // by adjusting the scrollTop of the internal container directly. This
+  // avoids using scrollIntoView which can cause the outer page to scroll.
   useEffect(() => {
     if (!selectedRequestId) return;
     const container = scrollRef.current;
@@ -332,8 +335,101 @@ export default function ResultsTable({
       `[data-request-id="${selectedRequestId}"]`
     ) as HTMLElement | null;
     if (!el) return;
-    el.scrollIntoView({ block: 'center' });
+
+    // Calculate an explicit scrollTop so only the inner container scrolls.
+    const elOffsetTop = el.offsetTop;
+    const elHeight = el.offsetHeight;
+    const targetScrollTop = Math.max(
+      0,
+      elOffsetTop - Math.round(container.clientHeight / 2) + Math.round(elHeight / 2)
+    );
+
+    // Smooth behavior feels nicer for keyboard navigation.
+    try {
+      container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+    } catch (err) {
+      container.scrollTop = targetScrollTop;
+    }
   }, [selectedRequestId]);
+
+  // Prevent scroll chaining from the results table to the page.
+  // On wheel / touchmove, if the scroll container is at its bounds, stop propagation
+  // so the outer page does not scroll. This complements CSS overscroll-behavior
+  // for browsers that may still propagate touch/wheel events.
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const onWheel = (e: WheelEvent) => {
+      const delta = e.deltaY;
+      const atTop = container.scrollTop === 0;
+      const atBottom = Math.ceil(container.scrollTop + container.clientHeight) >= container.scrollHeight;
+
+      if ((atTop && delta < 0) || (atBottom && delta > 0)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      // We cannot determine direction easily without tracking start position;
+      // prevent default only when at bounds to avoid page scroll chaining.
+      const atTop = container.scrollTop === 0;
+      const atBottom = Math.ceil(container.scrollTop + container.clientHeight) >= container.scrollHeight;
+      if (atTop || atBottom) {
+        e.stopPropagation();
+      }
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', onWheel);
+      container.removeEventListener('touchmove', onTouchMove);
+    };
+  }, []);
+
+  // Handle keyboard navigation scoped to the results table container.
+  // Prevent default ArrowUp/ArrowDown page scrolling and keep focus inside the table.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Make container focusable so it can receive keyboard events.
+    if (!(container as HTMLElement).hasAttribute('tabindex')) {
+      (container as HTMLElement).setAttribute('tabindex', '0');
+    }
+
+    const handler = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (!container.contains(active)) return;
+      if (!onSelectRequest || filtered.length === 0) return;
+
+      const idx = filtered.findIndex((r) => r.id === selectedRequestId);
+      if (idx === -1) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (idx < filtered.length - 1) onSelectRequest(filtered[idx + 1].id);
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (idx > 0) onSelectRequest(filtered[idx - 1].id);
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onSelectRequest(null);
+      }
+    };
+
+    container.addEventListener('keydown', handler);
+    return () => container.removeEventListener('keydown', handler);
+  }, [filtered, selectedRequestId, onSelectRequest]);
 
   if (!requests.length) return null;
 
