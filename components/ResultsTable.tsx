@@ -324,6 +324,9 @@ export default function ResultsTable({
     return () => window.removeEventListener('keydown', handler);
   }, [filtered, selectedRequestId, onSelectRequest]);
 
+  // When selection changes, keep the selected row centered in the table
+  // by adjusting the scrollTop of the internal container directly. This
+  // avoids using scrollIntoView which can cause the outer page to scroll.
   useEffect(() => {
     if (!selectedRequestId) return;
     const container = scrollRef.current;
@@ -332,7 +335,21 @@ export default function ResultsTable({
       `[data-request-id="${selectedRequestId}"]`
     ) as HTMLElement | null;
     if (!el) return;
-    el.scrollIntoView({ block: 'center' });
+
+    // Calculate an explicit scrollTop so only the inner container scrolls.
+    const elOffsetTop = el.offsetTop;
+    const elHeight = el.offsetHeight;
+    const targetScrollTop = Math.max(
+      0,
+      elOffsetTop - Math.round(container.clientHeight / 2) + Math.round(elHeight / 2)
+    );
+
+    // Smooth behavior feels nicer for keyboard navigation.
+    try {
+      container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+    } catch (err) {
+      container.scrollTop = targetScrollTop;
+    }
   }, [selectedRequestId]);
 
   // Prevent scroll chaining from the results table to the page.
@@ -374,6 +391,45 @@ export default function ResultsTable({
       container.removeEventListener('touchmove', onTouchMove);
     };
   }, []);
+
+  // Handle keyboard navigation scoped to the results table container.
+  // Prevent default ArrowUp/ArrowDown page scrolling and keep focus inside the table.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Make container focusable so it can receive keyboard events.
+    if (!(container as HTMLElement).hasAttribute('tabindex')) {
+      (container as HTMLElement).setAttribute('tabindex', '0');
+    }
+
+    const handler = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (!container.contains(active)) return;
+      if (!onSelectRequest || filtered.length === 0) return;
+
+      const idx = filtered.findIndex((r) => r.id === selectedRequestId);
+      if (idx === -1) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (idx < filtered.length - 1) onSelectRequest(filtered[idx + 1].id);
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (idx > 0) onSelectRequest(filtered[idx - 1].id);
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onSelectRequest(null);
+      }
+    };
+
+    container.addEventListener('keydown', handler);
+    return () => container.removeEventListener('keydown', handler);
+  }, [filtered, selectedRequestId, onSelectRequest]);
 
   if (!requests.length) return null;
 
