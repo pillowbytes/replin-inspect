@@ -8,14 +8,13 @@
 2. 
 3. 
 
-## Expected
+## Expected behavior
 
 
-## Actual
+## Actual behavior
 
 
 ## Additional details
 - Browser / OS:
-- Replin Inspect version / commit:
 
 <!-- Add screenshots, HAR files (sanitized), or logs if helpful -->
