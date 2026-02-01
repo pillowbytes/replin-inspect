@@ -335,6 +335,46 @@ export default function ResultsTable({
     el.scrollIntoView({ block: 'center' });
   }, [selectedRequestId]);
 
+  // Prevent scroll chaining from the results table to the page.
+  // On wheel / touchmove, if the scroll container is at its bounds, stop propagation
+  // so the outer page does not scroll. This complements CSS overscroll-behavior
+  // for browsers that may still propagate touch/wheel events.
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const onWheel = (e: WheelEvent) => {
+      const delta = e.deltaY;
+      const atTop = container.scrollTop === 0;
+      const atBottom = Math.ceil(container.scrollTop + container.clientHeight) >= container.scrollHeight;
+
+      if ((atTop && delta < 0) || (atBottom && delta > 0)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      // We cannot determine direction easily without tracking start position;
+      // prevent default only when at bounds to avoid page scroll chaining.
+      const atTop = container.scrollTop === 0;
+      const atBottom = Math.ceil(container.scrollTop + container.clientHeight) >= container.scrollHeight;
+      if (atTop || atBottom) {
+        e.stopPropagation();
+      }
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', onWheel);
+      container.removeEventListener('touchmove', onTouchMove);
+    };
+  }, []);
+
   if (!requests.length) return null;
 
   return (
